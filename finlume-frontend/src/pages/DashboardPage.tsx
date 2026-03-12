@@ -89,6 +89,26 @@ export const DashboardPage = () => {
     { name: 'Travel Fund', target: 30000, current: 8000, date: '2027-04-30' }
   ]);
 
+  // Advisor state
+  const [advisorInput, setAdvisorInput] = useState('');
+  const [advisorLoading, setAdvisorLoading] = useState(false);
+  const [advisorData, setAdvisorData] = useState<any>(null);
+
+  const handleAdvisorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!advisorInput.trim()) return;
+    setAdvisorLoading(true);
+    try {
+      const res = await api.post('/api/agents/advisor', { question: advisorInput.trim() });
+      setAdvisorData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAdvisorLoading(false);
+      setAdvisorInput('');
+    }
+  };
+
   // Auth verification & initialization
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -644,6 +664,101 @@ export const DashboardPage = () => {
     );
   };
 
+  const renderAdvisorTab = () => {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl h-[70vh] flex flex-col justify-between overflow-hidden animate-fadeIn">
+        <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/20 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-xl">🧠</span>
+            <div>
+              <h3 className="text-sm font-bold text-white">Financial Advisor</h3>
+              <p className="text-xxs text-emerald-400">Online • Analyze large purchases or financial health</p>
+            </div>
+          </div>
+          <span className="text-xxs text-slate-500">Powered by Agentic LLM</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-950/30">
+          {!advisorData && !advisorLoading && (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
+              <span className="text-4xl">💭</span>
+              <h4 className="text-lg font-bold text-white">Ask for Financial Advice</h4>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Wondering if you can afford that new laptop? Need to know if your cash flow is healthy enough for a vacation? Ask me below!
+              </p>
+            </div>
+          )}
+
+          {advisorLoading && (
+            <div className="flex flex-col items-center justify-center h-full animate-pulse space-y-4">
+              <span className="text-4xl animate-bounce">🧠</span>
+              <p className="text-xs text-slate-400">Analyzing your cash flow and affordability...</p>
+            </div>
+          )}
+
+          {advisorData && !advisorLoading && (
+            <div className="space-y-6 animate-scaleIn">
+              {/* Top Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-center">
+                  <p className="text-xxs text-slate-400 uppercase font-bold tracking-wider mb-1">Affordability</p>
+                  <p className={`text-xl font-extrabold ${advisorData.affordability_score === 'Poor' ? 'text-rose-500' : 'text-emerald-400'}`}>
+                    {advisorData.affordability_score || 'N/A'}
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-center">
+                  <p className="text-xxs text-slate-400 uppercase font-bold tracking-wider mb-1">Risk Level</p>
+                  <p className={`text-xl font-extrabold ${advisorData.risk_level?.includes('High') ? 'text-rose-500' : 'text-blue-400'}`}>
+                    {advisorData.risk_level || 'N/A'}
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-center">
+                  <p className="text-xxs text-slate-400 uppercase font-bold tracking-wider mb-1">Savings Rate</p>
+                  <p className="text-xl font-extrabold text-white">
+                    {advisorData.savings_rate || 'N/A'}
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-center">
+                  <p className="text-xxs text-slate-400 uppercase font-bold tracking-wider mb-1">Emergency Fund</p>
+                  <p className="text-xl font-extrabold text-white">
+                    {advisorData.emergency_fund_status || 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Recommendation Card */}
+              <div className="p-6 bg-gradient-to-br from-indigo-900/40 to-slate-900 border border-indigo-500/30 rounded-2xl shadow-xl">
+                <h4 className="text-sm font-bold text-indigo-400 mb-2">Final Recommendation</h4>
+                <p className="text-lg text-white font-medium leading-relaxed">{advisorData.recommendation}</p>
+                <div className="mt-4 p-4 bg-slate-950/50 rounded-xl border border-slate-800">
+                  <p className="text-xs text-slate-300 leading-relaxed">{advisorData.answer}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleAdvisorSubmit} className="p-4 border-t border-slate-800 bg-slate-950/40 flex items-center space-x-2">
+          <input
+            type="text"
+            value={advisorInput}
+            onChange={(e) => setAdvisorInput(e.target.value)}
+            disabled={advisorLoading}
+            placeholder="e.g., Can I afford a bike worth ₹80000 this month?"
+            className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            type="submit"
+            disabled={advisorLoading || !advisorInput.trim()}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow disabled:opacity-50 transition-colors"
+          >
+            Ask Advisor
+          </button>
+        </form>
+      </div>
+    );
+  };
+
   const renderActiveTabContent = () => {
     switch (currentTab) {
       case 'Dashboard':
@@ -656,6 +771,8 @@ export const DashboardPage = () => {
         return renderBudgetTab();
       case 'Goals':
         return renderGoalsTab();
+      case 'Advisor':
+        return renderAdvisorTab();
       default:
         return (
           <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl text-center text-slate-400 text-sm">

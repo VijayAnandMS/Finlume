@@ -25,19 +25,38 @@ BUDGET_TOOL_SCHEMA = {
     }
 }
 
-from app.ai.llm_client import call_llm_with_tools
+from app.agents.advisor_agent import analyze_financial_decision
 
-def call_orchestrator(user_message: str, summary_data: Dict[str, Any], transactions: List[Dict[str, Any]]) -> Dict[str, Any]:
+ADVISOR_TOOL_SCHEMA = {
+    "name": "advisor_agent",
+    "description": "Calculates financial affordability, risk levels, and provides specific recommendations based on user cash flow. Use this when the user asks for financial advice on purchasing, affordability, or risk.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "question": {"type": "string", "description": "The financial question to analyze"},
+            "context": {"type": "object", "description": "Any additional context"},
+            "user_id": {"type": "integer", "description": "The user's ID"}
+        },
+        "required": ["question"]
+    }
+}
+
+from app.ai.llm_client import call_llm_with_tools
+import json
+
+def call_orchestrator(user_id: int, user_message: str, summary_data: Dict[str, Any], transactions: List[Dict[str, Any]]) -> Dict[str, Any]:
     messages = [{"role": "user", "content": user_message}]
     
     system_prompt = (
         "You are Finlume AI, a friendly, professional financial coach.\n"
-        "You have access to tools that can analyze expenses and plan budgets based on the user's data.\n"
+        "You have access to tools that can analyze expenses, plan budgets, and act as a financial advisor based on the user's data.\n"
         "Use these tools if the user's request requires it, or answer directly if you don't need them.\n"
+        "The planner should NOT call the advisor for unrelated questions.\n"
+        f"For reference, the current user_id is {user_id}.\n"
         "Provide concise, encouraging, and highly actionable advice (1-3 paragraphs max)."
     )
 
-    tools = [EXPENSE_TOOL_SCHEMA, BUDGET_TOOL_SCHEMA]
+    tools = [EXPENSE_TOOL_SCHEMA, BUDGET_TOOL_SCHEMA, ADVISOR_TOOL_SCHEMA]
     agents_used = []
     
     max_iterations = 5
@@ -58,13 +77,26 @@ def call_orchestrator(user_message: str, summary_data: Dict[str, Any], transacti
         if not tool_uses:
             # No tool use requested, LLM provided a final text response.
             final_text = "".join(c.text for c in response.content if c.type == "text")
-            return {"reply": final_text, "agents_used": agents_used}
+            
+            # Extract advisor_data if it exists in the tool results history
+            advisor_data = None
+            for m in messages:
+                if m["role"] == "user" and isinstance(m["content"], list):
+                    for b in m["content"]:
+                        if isinstance(b, dict) and b.get("tool_name") == "advisor_agent":
+                            try:
+                                advisor_data = json.loads(b["content"])
+                            except:
+                                pass
+            
+            return {"reply": final_text, "agents_used": agents_used, "advisor_data": advisor_data}
             
         # Execute each tool requested
         tool_results = []
         for tool_use in tool_uses:
             tool_name = tool_use.name
             tool_id = tool_use.id
+            args = getattr(tool_use, "input", {})
             
             if tool_name not in agents_used:
                 agents_used.append(tool_name)
@@ -74,6 +106,19 @@ def call_orchestrator(user_message: str, summary_data: Dict[str, Any], transacti
             elif tool_name == "budget_agent":
                 top_cats_dicts = [{"category": c[0], "amount": c[1]} for c in summary_data.get("top_categories", [])]
                 result_str = plan_budget(summary_data.get("total_income", 0.0), summary_data.get("total_expense", 0.0), top_cats_dicts)
+            elif tool_name == "advisor_agent":
+                question = args.get("question", user_message)
+                # Inject total_income and total_expense into context
+                context = args.get("context", {})
+                context["total_income"] = summary_data.get("total_income", 0.0)
+                context["total_expense"] = summary_data.get("total_expense", 0.0)
+                
+                advisor_result = analyze_financial_decision(
+                    user_id=args.get("user_id", user_id),
+                    question=question,
+                    context=context
+                )
+                result_str = json.dumps(advisor_result)
             else:
                 result_str = f"Error: Unknown tool {tool_name}"
                 

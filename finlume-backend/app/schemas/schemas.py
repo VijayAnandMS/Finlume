@@ -17,6 +17,7 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    expiration: int
 
 class TokenData(BaseModel):
     username: Optional[str] = None

@@ -53,7 +53,7 @@ def chat_with_coach(
     
     if anthropic_key or gemini_key:
         try:
-            result = call_orchestrator(chat_in.message, summary, txs_list)
+            result = call_orchestrator(current_user.id, chat_in.message, summary, txs_list)
             return ChatReply(reply=result["reply"], agents_used=result["agents_used"])
         except Exception as e:
             print(f"ORCHESTRATOR EXCEPTION: {e}")

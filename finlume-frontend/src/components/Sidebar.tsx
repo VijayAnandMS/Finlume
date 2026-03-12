@@ -9,6 +9,7 @@ const menuItems = [
   { name: 'Transactions', icon: '💸' },
   { name: 'Budget', icon: '👛' },
   { name: 'Goals', icon: '🎯' },
+  { name: 'Advisor', icon: '🧠' },
   { name: 'Investments', icon: '📈' },
   { name: 'Reports', icon: '📁' },
   { name: 'Settings', icon: '⚙️' },

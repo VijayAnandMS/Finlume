@@ -1,12 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.routes import auth, transactions, summary, chat
+from app.routes import auth, transactions, summary, chat, advisor
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print(f"INFO: Database engine active: {settings.DATABASE_URL}")
+    yield
 
 app = FastAPI(
     title="Finlume Backend",
     description="FastAPI Backend for Finlume AI",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS configuration
@@ -28,6 +36,7 @@ app.include_router(auth.router)
 app.include_router(transactions.router)
 app.include_router(summary.router)
 app.include_router(chat.router)
+app.include_router(advisor.router)
 
 @app.get("/health")
 def health_check():
