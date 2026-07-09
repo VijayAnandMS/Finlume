@@ -1,0 +1,801 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Sidebar } from '../components/Sidebar';
+import api from '../lib/api';
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as ChartTooltip,
+  Legend,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid
+} from 'recharts';
+
+interface Transaction {
+  id: number;
+  user_id: number;
+  date: string;
+  category: string;
+  type: string;
+  amount: number;
+  description: string;
+  created_at: string;
+}
+
+interface Summary {
+  total_income: number;
+  total_expense: number;
+  net: number;
+  top_categories: Array<{ category: string; amount: number }>;
+  transactions: Array<Transaction>;
+}
+
+interface ChatMsg {
+  sender: 'user' | 'ai';
+  text: string;
+  time: string;
+}
+
+export const DashboardPage = () => {
+  const navigate = useNavigate();
+  const [currentTab, setCurrentTab] = useState('Dashboard');
+  const [username, setUsername] = useState('User');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [summary, setSummary] = useState<Summary>({
+    total_income: 0,
+    total_expense: 0,
+    net: 0,
+    top_categories: [],
+    transactions: []
+  });
+
+  // Modal / Form state for Transaction CRUD
+  const [showTxModal, setShowTxModal] = useState(false);
+  const [editingTxId, setEditingTxId] = useState<number | null>(null);
+  const [txForm, setTxForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    category: 'Food',
+    type: 'expense',
+    amount: '',
+    description: ''
+  });
+
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
+    { sender: 'ai', text: 'Hello! I am your Finlume financial coach. Ask me questions about your savings, spending, or budget targets.', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Budget configurations
+  const [budgets, setBudgets] = useState<Record<string, number>>({
+    Food: 5000,
+    Rent: 20000,
+    Entertainment: 3000,
+    Shopping: 8000,
+    Travel: 4000,
+    Utilities: 6000
+  });
+
+  // Saving goals configurations
+  const [goals, setGoals] = useState([
+    { name: 'Emergency Fund', target: 50000, current: 15000, date: '2026-12-31' },
+    { name: 'Travel Fund', target: 30000, current: 8000, date: '2027-04-30' }
+  ]);
+
+  // Auth verification & initialization
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    
+    // Fetch user and details
+    api.get('/api/auth/me')
+      .then(res => {
+        setUsername(res.data.username);
+        fetchData();
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+        navigate('/login');
+      });
+  }, [navigate]);
+
+  useEffect(() => {
+    if (currentTab === 'AI Chat') {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, currentTab]);
+
+  const fetchData = async () => {
+    try {
+      const summaryRes = await api.get('/api/summary/');
+      setSummary(summaryRes.data);
+      
+      const txRes = await api.get('/api/transactions/');
+      setTransactions(txRes.data);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+  // Transaction CRUD Actions
+  const handleOpenAddModal = () => {
+    setEditingTxId(null);
+    setTxForm({
+      date: new Date().toISOString().split('T')[0],
+      category: 'Food',
+      type: 'expense',
+      amount: '',
+      description: ''
+    });
+    setShowTxModal(true);
+  };
+
+  const handleOpenEditModal = (tx: Transaction) => {
+    setEditingTxId(tx.id);
+    setTxForm({
+      date: tx.date,
+      category: tx.category,
+      type: tx.type,
+      amount: tx.amount.toString(),
+      description: tx.description || ''
+    });
+    setShowTxModal(true);
+  };
+
+  const handleDeleteTx = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+    try {
+      await api.delete(`/api/transactions/${id}`);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      date: txForm.date,
+      category: txForm.category,
+      type: txForm.type,
+      amount: parseFloat(txForm.amount) || 0,
+      description: txForm.description
+    };
+
+    try {
+      if (editingTxId) {
+        await api.put(`/api/transactions/${editingTxId}`, payload);
+      } else {
+        await api.post('/api/transactions/', payload);
+      }
+      setShowTxModal(false);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Chat Actions
+  const handleSendChatMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userText = chatInput.trim();
+    setChatInput('');
+    setChatMessages(prev => [...prev, {
+      sender: 'user',
+      text: userText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }]);
+    setChatLoading(true);
+
+    try {
+      const chatRes = await api.post('/api/chat/', { message: userText });
+      setChatMessages(prev => [...prev, {
+        sender: 'ai',
+        text: chatRes.data.reply,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } catch (err) {
+      console.error(err);
+      setChatMessages(prev => [...prev, {
+        sender: 'ai',
+        text: 'Sorry, I had trouble contacting my cognitive module. Please make sure the backend is active.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Render Helpers
+  const renderDashboardOverview = () => {
+    const pieData = summary.top_categories.map(c => ({
+      name: c.category,
+      value: c.amount
+    }));
+
+    const COLORS = ['#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#10b981'];
+
+    return (
+      <div className="space-y-8 animate-fadeIn">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Income</p>
+              <h3 className="text-3xl font-extrabold text-white mt-2">₹{summary.total_income.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">
+              📥
+            </div>
+          </div>
+          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Expenses</p>
+              <h3 className="text-3xl font-extrabold text-white mt-2">₹{summary.total_expense.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-xl">
+              📤
+            </div>
+          </div>
+          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net Surplus</p>
+              <h3 className={`text-3xl font-extrabold mt-2 ${summary.net >= 0 ? 'text-blue-400' : 'text-amber-500'}`}>
+                ₹{summary.net.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </h3>
+            </div>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl border ${
+              summary.net >= 0 
+                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
+                : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+            }`}>
+              ⚖️
+            </div>
+          </div>
+        </div>
+
+        {/* Charts & Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Spending Distribution Chart */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+            <h4 className="text-base font-bold text-white mb-4">Spending by Category</h4>
+            {pieData.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {pieData.map((_entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
+                      itemStyle={{ color: '#fff' }}
+                    />
+                    <Legend verticalAlign="bottom" height={36} formatter={(value) => <span className="text-slate-300 text-xs">{value}</span>} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-64 flex flex-col items-center justify-center text-slate-500 text-xs">
+                <span>No expense data available.</span>
+                <button onClick={handleOpenAddModal} className="mt-2 text-blue-400 hover:underline">Add transaction</button>
+              </div>
+            )}
+          </div>
+
+          {/* Recent Activity List */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-base font-bold text-white">Recent Transactions</h4>
+              <button 
+                onClick={() => setCurrentTab('Transactions')}
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                View All
+              </button>
+            </div>
+            
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+              {summary.transactions && summary.transactions.length > 0 ? (
+                summary.transactions.map((tx) => (
+                  <div key={tx.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-950/60 border border-slate-800/40">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg">
+                        {tx.type === 'income' ? '📥' : '📤'}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-white">{tx.category}</p>
+                        <p className="text-xxs text-slate-500">{tx.date} {tx.description && `• ${tx.description}`}</p>
+                      </div>
+                    </div>
+                    <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-slate-300'}`}>
+                      {tx.type === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center justify-center h-48 text-slate-500 text-xs">
+                  No recent transactions.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTransactionsTab = () => {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl animate-fadeIn">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-white">Transaction Logs</h3>
+            <p className="text-xs text-slate-400">View, search, edit, and record your cashflows</p>
+          </div>
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all shadow"
+          >
+            <span>➕</span>
+            <span>Record Transaction</span>
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-800 text-slate-400 text-xxs font-bold uppercase tracking-wider">
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Category</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4">Description</th>
+                <th className="py-3 px-4 text-right">Amount</th>
+                <th className="py-3 px-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 text-sm">
+              {transactions.length > 0 ? (
+                transactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-slate-950/20 transition-all text-xs">
+                    <td className="py-3 px-4 font-mono text-slate-400">{tx.date}</td>
+                    <td className="py-3 px-4 font-semibold text-white">{tx.category}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xxs font-semibold uppercase ${
+                        tx.type === 'income' 
+                          ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
+                          : 'bg-slate-800 border border-slate-700/80 text-slate-400'
+                      }`}>
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-400 italic max-w-xs truncate">{tx.description || '-'}</td>
+                    <td className={`py-3 px-4 text-right font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-slate-200'}`}>
+                      {tx.type === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex justify-center space-x-2">
+                        <button
+                          onClick={() => handleOpenEditModal(tx)}
+                          className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400 transition-colors"
+                          title="Edit"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTx(tx.id)}
+                          className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-red-400 transition-colors"
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                    No transactions registered. Click 'Record Transaction' to add one.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAIChatTab = () => {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl h-[70vh] flex flex-col justify-between overflow-hidden animate-fadeIn">
+        <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/20 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-xl">🤖</span>
+            <div>
+              <h3 className="text-sm font-bold text-white">Finlume AI Coach</h3>
+              <p className="text-xxs text-emerald-400">Online • Ready to advise</p>
+            </div>
+          </div>
+          <span className="text-xxs text-slate-500">Powered by Claude</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-950/30">
+          {chatMessages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+            >
+              <div
+                className={`max-w-md p-3.5 rounded-2xl text-xs leading-relaxed shadow ${
+                  msg.sender === 'user'
+                    ? 'bg-blue-600 text-white rounded-tr-none'
+                    : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/50'
+                }`}
+                style={{ whiteSpace: 'pre-wrap' }}
+              >
+                {msg.text}
+              </div>
+              <span className="text-xxs text-slate-500 mt-1 px-1">{msg.time}</span>
+            </div>
+          ))}
+          {chatLoading && (
+            <div className="flex flex-col items-start animate-pulse">
+              <div className="bg-slate-800 border border-slate-700/50 text-slate-400 max-w-md p-3.5 rounded-2xl rounded-tl-none text-xs flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce"></span>
+                <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce delay-100"></span>
+                <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce delay-200"></span>
+              </div>
+            </div>
+          )}
+          <div ref={chatBottomRef} />
+        </div>
+
+        <form onSubmit={handleSendChatMessage} className="p-4 border-t border-slate-800 bg-slate-950/40 flex items-center space-x-2">
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            disabled={chatLoading}
+            placeholder="Ask about savings rules, overspending limit warnings, or summaries..."
+            className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            disabled={chatLoading || !chatInput.trim()}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow disabled:opacity-50 transition-colors"
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    );
+  };
+
+  const renderBudgetTab = () => {
+    // Aggregate actual expense amounts
+    const expensesByCategory: Record<string, number> = {};
+    transactions.forEach(t => {
+      if (t.type === 'expense') {
+        expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
+      }
+    });
+
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl animate-fadeIn space-y-6">
+        <div>
+          <h3 className="text-lg font-bold text-white">Category Budgets</h3>
+          <p className="text-xs text-slate-400">Set limits and track spending limits across active categories</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Object.entries(budgets).map(([cat, limit]) => {
+            const spent = expensesByCategory[cat] || 0;
+            const pct = limit > 0 ? (spent / limit) * 100 : 0;
+            const isWarn = pct >= 90;
+            const isNear = pct >= 75 && pct < 90;
+
+            return (
+              <div key={cat} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-semibold text-white">{cat}</span>
+                  <span className="text-slate-400">
+                    ₹{spent.toLocaleString('en-IN')} / <span className="text-slate-500">₹{limit.toLocaleString('en-IN')}</span>
+                  </span>
+                </div>
+                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      isWarn 
+                        ? 'bg-rose-500' 
+                        : isNear 
+                          ? 'bg-amber-500' 
+                          : 'bg-blue-500'
+                    }`}
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xxs">
+                  <span className={isWarn ? 'text-rose-400 font-bold' : isNear ? 'text-amber-400' : 'text-slate-500'}>
+                    {pct.toFixed(0)}% utilized
+                  </span>
+                  <button 
+                    onClick={() => {
+                      const newLimit = window.prompt(`Set new budget limit for ${cat}:`, limit.toString());
+                      if (newLimit !== null) {
+                        const parsed = parseFloat(newLimit) || 0;
+                        setBudgets(prev => ({ ...prev, [cat]: parsed }));
+                      }
+                    }}
+                    className="text-blue-400 hover:underline"
+                  >
+                    Adjust Limit
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderGoalsTab = () => {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl animate-fadeIn space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-bold text-white">Savings Goals</h3>
+            <p className="text-xs text-slate-400">Stay on track towards your financial milestones</p>
+          </div>
+          <button
+            onClick={() => {
+              const name = window.prompt('Enter goal name:');
+              const target = parseFloat(window.prompt('Enter target amount (₹):') || '0');
+              const current = parseFloat(window.prompt('Enter current saved amount (₹):') || '0');
+              const date = window.prompt('Enter target date (YYYY-MM-DD):', '2027-12-31');
+              
+              if (name && target > 0) {
+                setGoals(prev => [...prev, { name, target, current, date: date || '' }]);
+              }
+            }}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow transition-colors"
+          >
+            Add Goal
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {goals.map((g, idx) => {
+            const pct = g.target > 0 ? (g.current / g.target) * 100 : 0;
+            return (
+              <div key={idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-sm font-semibold text-white">{g.name}</h4>
+                    <p className="text-xxs text-slate-500">Target Date: {g.date}</p>
+                  </div>
+                  <span className="text-xs font-bold text-white">
+                    ₹{g.current.toLocaleString()} / <span className="text-slate-500">₹{g.target.toLocaleString()}</span>
+                  </span>
+                </div>
+                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xxs">
+                  <span className="text-slate-400 font-semibold">{pct.toFixed(0)}% Saved</span>
+                  <div className="space-x-2">
+                    <button
+                      onClick={() => {
+                        const amt = parseFloat(window.prompt('Add amount saved (₹):') || '0');
+                        if (amt > 0) {
+                          setGoals(prev => prev.map((item, i) => i === idx ? { ...item, current: item.current + amt } : item));
+                        }
+                      }}
+                      className="text-emerald-400 hover:underline"
+                    >
+                      Add Savings
+                    </button>
+                    <button
+                      onClick={() => {
+                        setGoals(prev => prev.filter((_, i) => i !== idx));
+                      }}
+                      className="text-red-400 hover:underline"
+                    >
+                      Delete Goal
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderActiveTabContent = () => {
+    switch (currentTab) {
+      case 'Dashboard':
+        return renderDashboardOverview();
+      case 'Transactions':
+        return renderTransactionsTab();
+      case 'AI Chat':
+        return renderAIChatTab();
+      case 'Budget':
+        return renderBudgetTab();
+      case 'Goals':
+        return renderGoalsTab();
+      default:
+        return (
+          <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl text-center text-slate-400 text-sm">
+            This module is ready for future extension. Integrate APIs or customization parameters here.
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="flex bg-slate-950 min-h-screen font-sans text-slate-100 relative">
+      <Sidebar currentTab={currentTab} onTabChange={setCurrentTab} />
+      
+      <main className="flex-1 p-8 flex flex-col justify-between overflow-y-auto max-h-screen">
+        <div>
+          {/* Header */}
+          <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-900">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                {currentTab}
+              </h1>
+              <p className="text-slate-400 mt-1 text-sm">Hi, {username}. Manage your assets and financial health.</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={handleLogout}
+                className="text-xs text-slate-400 hover:text-red-400 border border-slate-800 hover:border-red-950 px-3 py-1.5 rounded-xl transition-all"
+              >
+                Log Out
+              </button>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-slate-700 flex items-center justify-center font-bold text-white shadow uppercase">
+                {username.slice(0, 2)}
+              </div>
+            </div>
+          </header>
+
+          {/* Active Tab Screen */}
+          {renderActiveTabContent()}
+        </div>
+
+        <footer className="mt-12 text-center text-slate-600 text-xxs">
+          Finlume AI Financial Copilot © 2026. Made with Premium Design Aesthetics.
+        </footer>
+      </main>
+
+      {/* Transaction Add/Edit Modal */}
+      {showTxModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-md animate-scaleIn">
+            <h3 className="text-lg font-bold text-white mb-4">
+              {editingTxId ? 'Edit Transaction Details' : 'Record New Transaction'}
+            </h3>
+            
+            <form onSubmit={handleSaveTransaction} className="space-y-4">
+              <div>
+                <label className="block text-xxs font-bold text-slate-400 uppercase">Date</label>
+                <input
+                  type="date"
+                  required
+                  value={txForm.date}
+                  onChange={(e) => setTxForm(prev => ({ ...prev, date: e.target.value }))}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xxs font-bold text-slate-400 uppercase">Category</label>
+                  <select
+                    value={txForm.category}
+                    onChange={(e) => setTxForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="Salary">Salary</option>
+                    <option value="Food">Food</option>
+                    <option value="Rent">Rent</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xxs font-bold text-slate-400 uppercase">Type</label>
+                  <select
+                    value={txForm.type}
+                    onChange={(e) => setTxForm(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xxs font-bold text-slate-400 uppercase">Amount (₹)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  placeholder="e.g. 500"
+                  value={txForm.amount}
+                  onChange={(e) => setTxForm(prev => ({ ...prev, amount: e.target.value }))}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xxs font-bold text-slate-400 uppercase">Description</label>
+                <input
+                  type="text"
+                  placeholder="Optional detail..."
+                  value={txForm.description}
+                  onChange={(e) => setTxForm(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTxModal(false)}
+                  className="px-4 py-2 border border-slate-800 text-slate-400 hover:text-white rounded-xl text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

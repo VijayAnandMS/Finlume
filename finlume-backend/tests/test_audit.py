@@ -1,0 +1,262 @@
+import pytest
+import sys
+from datetime import timedelta
+from unittest.mock import MagicMock, patch
+from jose import jwt
+from app.core.config import settings
+from app.core.security import create_access_token
+
+# Mock Anthropic in sys.modules so the test runs cleanly without installing dependencies
+mock_anthropic_module = MagicMock()
+# Configure Claude Mock responses
+class MockTextBlock:
+    def __init__(self, text):
+        self.type = "text"
+        self.text = text
+
+class MockMessageResponse:
+    def __init__(self, content):
+        self.content = content
+
+
+def test_auth_wrong_password(client):
+    # Register test user
+    client.post(
+        "/api/auth/register",
+        json={"username": "audituser", "password": "securepassword"}
+    )
+
+    # Login with wrong password (should fail 401)
+    login_fail = client.post(
+        "/api/auth/login",
+        json={"username": "audituser", "password": "wrongpassword"}
+    )
+    assert login_fail.status_code == 401
+    assert login_fail.json()["detail"] == "Invalid username or password"
+
+
+def test_auth_missing_or_expired_jwt(client):
+    # 1. Missing Token (401)
+    res_missing = client.get("/api/auth/me")
+    assert res_missing.status_code == 401
+
+    # 2. Expired Token
+    expired_token = create_access_token(
+        subject="audituser",
+        expires_delta=timedelta(minutes=-10)
+    )
+    res_expired = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {expired_token}"}
+    )
+    assert res_expired.status_code == 401
+    assert "validate credentials" in res_expired.json()["detail"].lower()
+
+    # 3. Tampered/Bad Secret Token
+    bad_secret_token = jwt.encode(
+        {"exp": 9999999999, "sub": "audituser"},
+        "wrongsecretkey",
+        algorithm="HS256"
+    )
+    res_tampered = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {bad_secret_token}"}
+    )
+    assert res_tampered.status_code == 401
+    assert "validate credentials" in res_tampered.json()["detail"].lower()
+
+
+def test_transaction_cross_user_isolation(client):
+    # Register & Login User A
+    client.post(
+        "/api/auth/register",
+        json={"username": "usera", "password": "passworda"}
+    )
+    token_a = client.post(
+        "/api/auth/login",
+        json={"username": "usera", "password": "passworda"}
+    ).json()["access_token"]
+
+    # Register & Login User B
+    client.post(
+        "/api/auth/register",
+        json={"username": "userb", "password": "passwordb"}
+    )
+    token_b = client.post(
+        "/api/auth/login",
+        json={"username": "userb", "password": "passwordb"}
+    ).json()["access_token"]
+
+    # User A creates a transaction
+    tx_a = client.post(
+        "/api/transactions/",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={
+            "date": "2026-07-08",
+            "category": "Salary",
+            "type": "income",
+            "amount": 50000.0,
+            "description": "User A pay"
+        }
+    ).json()
+    tx_a_id = tx_a["id"]
+
+    # User B tries to read User A's transaction (should fail 404)
+    res_read = client.get(
+        f"/api/transactions/",
+        headers={"Authorization": f"Bearer {token_b}"}
+    )
+    assert res_read.status_code == 200
+    # User B should not see User A's transaction in their list
+    user_b_txs = res_read.json()
+    assert all(tx["id"] != tx_a_id for tx in user_b_txs)
+
+    # User B tries to update User A's transaction (should fail 404)
+    res_update = client.put(
+        f"/api/transactions/{tx_a_id}",
+        headers={"Authorization": f"Bearer {token_b}"},
+        json={
+            "date": "2026-07-08",
+            "category": "Salary",
+            "type": "income",
+            "amount": 99999.0,
+            "description": "User B hack attempt"
+        }
+    )
+    assert res_update.status_code == 404
+
+    # User B tries to delete User A's transaction (should fail 404)
+    res_delete = client.delete(
+        f"/api/transactions/{tx_a_id}",
+        headers={"Authorization": f"Bearer {token_b}"}
+    )
+    assert res_delete.status_code == 404
+
+
+def test_analytics_exact_math(client):
+    # Register & Login User C
+    client.post(
+        "/api/auth/register",
+        json={"username": "userc", "password": "passwordc"}
+    )
+    token_c = client.post(
+        "/api/auth/login",
+        json={"username": "userc", "password": "passwordc"}
+    ).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token_c}"}
+
+    # Add controlled cashflows
+    # Income: 20000
+    client.post("/api/transactions/", headers=headers, json={"date": "2026-07-08", "category": "Salary", "type": "income", "amount": 20000.0, "description": "Pay"})
+    # Expenses: Food 500, Shopping 1500, Food 250
+    client.post("/api/transactions/", headers=headers, json={"date": "2026-07-08", "category": "Food", "type": "expense", "amount": 500.0})
+    client.post("/api/transactions/", headers=headers, json={"date": "2026-07-09", "category": "Shopping", "type": "expense", "amount": 1500.0})
+    client.post("/api/transactions/", headers=headers, json={"date": "2026-07-09", "category": "Food", "type": "expense", "amount": 250.0})
+
+    # Fetch summary and assert math values
+    summary_res = client.get("/api/summary/", headers=headers)
+    assert summary_res.status_code == 200
+    data = summary_res.json()
+    assert data["total_income"] == 20000.0
+    assert data["total_expense"] == 2250.0
+    assert data["net"] == 17750.0
+
+    # Assert categories aggregated and sorted
+    assert len(data["top_categories"]) == 2
+    assert data["top_categories"][0]["category"] == "Shopping"
+    assert data["top_categories"][0]["amount"] == 1500.0
+    assert data["top_categories"][1]["category"] == "Food"
+    assert data["top_categories"][1]["amount"] == 750.0
+
+
+def test_ai_coach_claude_response(client):
+    # Get auth token
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "usera", "password": "passworda"}
+    )
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    sys.modules["anthropic"] = mock_anthropic_module
+    
+    # Set mock API key and provider
+    with patch("app.core.config.settings.ANTHROPIC_API_KEY", "mock-api-key"), \
+         patch("app.core.config.settings.LLM_PROVIDER", "anthropic"):
+        # Configure mock response for this test
+        mock_message = MockMessageResponse([MockTextBlock("Hello, this is a mocked financial coach response from Claude.")])
+        mock_anthropic_module.Anthropic.return_value.messages.create.return_value = mock_message
+        mock_anthropic_module.Anthropic.return_value.messages.create.side_effect = None
+        
+        res = client.post(
+            "/api/chat/",
+            headers=headers,
+            json={"message": "Suggest a savings plan for me."}
+        )
+        assert res.status_code == 200
+        assert res.json()["reply"] == "Hello, this is a mocked financial coach response from Claude."
+        # Verify mock Claude was indeed called
+        mock_anthropic_module.Anthropic.return_value.messages.create.assert_called_once()
+
+
+def test_ai_coach_failing_api_fallback(client):
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "usera", "password": "passworda"}
+    )
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    sys.modules["anthropic"] = mock_anthropic_module
+    
+    # Simulate Claude API throwing an exception
+    mock_anthropic_module.Anthropic.return_value.messages.create.side_effect = Exception("Anthropic API rate limit exceeded")
+    
+    with patch("app.core.config.settings.ANTHROPIC_API_KEY", "mock-api-key"), \
+         patch("app.core.config.settings.LLM_PROVIDER", "anthropic"):
+        res = client.post(
+            "/api/chat/",
+            headers=headers,
+            json={"message": "Give me a summary of my account"}
+        )
+        assert res.status_code == 200
+        # Should gracefully fall back to heuristics (overview keyword matches)
+        assert "overview:" in res.json()["reply"].lower()
+
+    # Reset side effect
+    mock_anthropic_module.Anthropic.return_value.messages.create.side_effect = None
+
+
+def test_ai_coach_malformed_transactions(client):
+    # Register & Login User D
+    client.post(
+        "/api/auth/register",
+        json={"username": "userd", "password": "passwordd"}
+    )
+    token_d = client.post(
+        "/api/auth/login",
+        json={"username": "userd", "password": "passwordd"}
+    ).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token_d}"}
+
+    # Add transaction with zero amount and empty details
+    client.post(
+        "/api/transactions/",
+        headers=headers,
+        json={
+            "date": "2026-07-08",
+            "category": "Other",
+            "type": "expense",
+            "amount": 0.0,
+            "description": ""
+        }
+    )
+
+    # Trigger chat summary request, ensure no zero-division or crash happens
+    res = client.post(
+        "/api/chat/",
+        headers=headers,
+        json={"message": "Give me a summary"}
+    )
+    assert res.status_code == 200
+    assert "income is ₹0.00" in res.json()["reply"].lower()

@@ -1,0 +1,62 @@
+from pydantic import BaseModel, ConfigDict
+from typing import List, Optional
+from datetime import datetime
+
+# --- User Schemas ---
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
+# --- Transaction Schemas ---
+class TransactionCreate(BaseModel):
+    date: str  # YYYY-MM-DD
+    category: str
+    type: str  # 'income' or 'expense'
+    amount: float
+    description: Optional[str] = None
+
+class TransactionOut(BaseModel):
+    id: int
+    user_id: int
+    date: str
+    category: str
+    type: str
+    amount: float
+    description: Optional[str]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Summary Schemas ---
+class CategorySummary(BaseModel):
+    category: str
+    amount: float
+
+class SummaryOut(BaseModel):
+    total_income: float
+    total_expense: float
+    net: float
+    top_categories: List[CategorySummary]
+    transactions: List[TransactionOut]
+
+# --- Chat Schemas ---
+class ChatMessage(BaseModel):
+    message: str
+
+class ChatReply(BaseModel):
+    reply: str
+    agents_used: List[str] = []
