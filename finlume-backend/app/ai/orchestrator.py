@@ -41,6 +41,20 @@ ADVISOR_TOOL_SCHEMA = {
     }
 }
 
+GOAL_PLANNER_TOOL_SCHEMA = {
+    "name": "goal_planner_agent",
+    "description": "Creates actionable saving strategies and orchestrates financial planning for a specific user goal.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "goal_name": {"type": "string", "description": "The name of the goal"},
+            "target_amount": {"type": "number", "description": "Target amount to save"},
+            "deadline": {"type": "string", "description": "The target date or duration"}
+        },
+        "required": ["goal_name", "target_amount"]
+    }
+}
+
 from app.ai.llm_client import call_llm_with_tools
 import json
 
@@ -56,7 +70,7 @@ def call_orchestrator(user_id: int, user_message: str, summary_data: Dict[str, A
         "Provide concise, encouraging, and highly actionable advice (1-3 paragraphs max)."
     )
 
-    tools = [EXPENSE_TOOL_SCHEMA, BUDGET_TOOL_SCHEMA, ADVISOR_TOOL_SCHEMA]
+    tools = [EXPENSE_TOOL_SCHEMA, BUDGET_TOOL_SCHEMA, ADVISOR_TOOL_SCHEMA, GOAL_PLANNER_TOOL_SCHEMA]
     agents_used = []
     
     max_iterations = 5
@@ -119,6 +133,12 @@ def call_orchestrator(user_id: int, user_message: str, summary_data: Dict[str, A
                     context=context
                 )
                 result_str = json.dumps(advisor_result)
+            elif tool_name == "goal_planner_agent":
+                from app.agents.goal_planner_agent import plan_goal
+                goal_name = args.get("goal_name", "Unnamed Goal")
+                target = args.get("target_amount", 0.0)
+                deadline = args.get("deadline", "TBD")
+                result_str = plan_goal(user_id, goal_name, target, deadline, summary_data, transactions)
             else:
                 result_str = f"Error: Unknown tool {tool_name}"
                 

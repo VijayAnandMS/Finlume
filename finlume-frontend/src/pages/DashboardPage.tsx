@@ -16,6 +16,16 @@ import {
   CartesianGrid
 } from 'recharts';
 
+interface Goal {
+  id: number;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  deadline: string;
+  monthly_target: number | null;
+  priority: string;
+}
+
 interface Transaction {
   id: number;
   user_id: number;
@@ -83,11 +93,27 @@ export const DashboardPage = () => {
     Utilities: 6000
   });
 
-  // Saving goals configurations
-  const [goals, setGoals] = useState([
-    { name: 'Emergency Fund', target: 50000, current: 15000, date: '2026-12-31' },
-    { name: 'Travel Fund', target: 30000, current: 8000, date: '2027-04-30' }
-  ]);
+  // Saving goals from server
+  const [goals, setGoals] = useState<Goal[]>([]);
+  // AI Goal Planner state
+  const [plannerInput, setPlannerInput] = useState('');
+  const [plannerLoading, setPlannerLoading] = useState(false);
+  const [plannerData, setPlannerData] = useState<any>(null);
+
+  const handlePlannerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!plannerInput.trim()) return;
+    setPlannerLoading(true);
+    try {
+      const res = await api.post('/api/agents/goal-planner', { message: plannerInput.trim() });
+      setPlannerData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPlannerLoading(false);
+      setPlannerInput('');
+    }
+  };
 
   // Advisor state
   const [advisorInput, setAdvisorInput] = useState('');
@@ -116,7 +142,7 @@ export const DashboardPage = () => {
       navigate('/login');
       return;
     }
-    
+
     // Fetch user and details
     api.get('/api/auth/me')
       .then(res => {
@@ -139,9 +165,12 @@ export const DashboardPage = () => {
     try {
       const summaryRes = await api.get('/api/summary/');
       setSummary(summaryRes.data);
-      
+
       const txRes = await api.get('/api/transactions/');
       setTransactions(txRes.data);
+
+      const goalsRes = await api.get('/api/goals/');
+      setGoals(goalsRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
     }
@@ -281,11 +310,10 @@ export const DashboardPage = () => {
                 ₹{summary.net.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </h3>
             </div>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl border ${
-              summary.net >= 0 
-                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl border ${summary.net >= 0
+                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
                 : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
-            }`}>
+              }`}>
               ⚖️
             </div>
           </div>
@@ -313,7 +341,7 @@ export const DashboardPage = () => {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <ChartTooltip 
+                    <ChartTooltip
                       contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
                       itemStyle={{ color: '#fff' }}
                     />
@@ -333,14 +361,14 @@ export const DashboardPage = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
             <div className="flex justify-between items-center mb-4">
               <h4 className="text-base font-bold text-white">Recent Transactions</h4>
-              <button 
+              <button
                 onClick={() => setCurrentTab('Transactions')}
                 className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
               >
                 View All
               </button>
             </div>
-            
+
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {summary.transactions && summary.transactions.length > 0 ? (
                 summary.transactions.map((tx) => (
@@ -407,11 +435,10 @@ export const DashboardPage = () => {
                     <td className="py-3 px-4 font-mono text-slate-400">{tx.date}</td>
                     <td className="py-3 px-4 font-semibold text-white">{tx.category}</td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xxs font-semibold uppercase ${
-                        tx.type === 'income' 
-                          ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
+                      <span className={`px-2 py-0.5 rounded-full text-xxs font-semibold uppercase ${tx.type === 'income'
+                          ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                           : 'bg-slate-800 border border-slate-700/80 text-slate-400'
-                      }`}>
+                        }`}>
                         {tx.type}
                       </span>
                     </td>
@@ -474,11 +501,10 @@ export const DashboardPage = () => {
               className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-md p-3.5 rounded-2xl text-xs leading-relaxed shadow ${
-                  msg.sender === 'user'
+                className={`max-w-md p-3.5 rounded-2xl text-xs leading-relaxed shadow ${msg.sender === 'user'
                     ? 'bg-blue-600 text-white rounded-tr-none'
                     : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/50'
-                }`}
+                  }`}
                 style={{ whiteSpace: 'pre-wrap' }}
               >
                 {msg.text}
@@ -551,14 +577,13 @@ export const DashboardPage = () => {
                   </span>
                 </div>
                 <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      isWarn 
-                        ? 'bg-rose-500' 
-                        : isNear 
-                          ? 'bg-amber-500' 
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${isWarn
+                        ? 'bg-rose-500'
+                        : isNear
+                          ? 'bg-amber-500'
                           : 'bg-blue-500'
-                    }`}
+                      }`}
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
                 </div>
@@ -566,7 +591,7 @@ export const DashboardPage = () => {
                   <span className={isWarn ? 'text-rose-400 font-bold' : isNear ? 'text-amber-400' : 'text-slate-500'}>
                     {pct.toFixed(0)}% utilized
                   </span>
-                  <button 
+                  <button
                     onClick={() => {
                       const newLimit = window.prompt(`Set new budget limit for ${cat}:`, limit.toString());
                       if (newLimit !== null) {
@@ -589,76 +614,120 @@ export const DashboardPage = () => {
 
   const renderGoalsTab = () => {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl animate-fadeIn space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className="text-lg font-bold text-white">Savings Goals</h3>
-            <p className="text-xs text-slate-400">Stay on track towards your financial milestones</p>
+      <div className="space-y-6 animate-fadeIn">
+        {/* CRUD Section */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-bold text-white">Savings Goals</h3>
+              <p className="text-xs text-slate-400">Manage and track your financial milestones</p>
+            </div>
+            <button
+              onClick={async () => {
+                const name = window.prompt('Enter goal name:');
+                if (!name) return;
+                const target = parseFloat(window.prompt('Enter target amount (₹):') || '0');
+                if (target <= 0) return;
+                const date = window.prompt('Enter target date (YYYY-MM-DD):', '2027-12-31');
+                try {
+                  await api.post('/api/goals/', { name, target_amount: target, current_amount: 0, deadline: date, status: 'active', priority: 'medium' });
+                  fetchData();
+                } catch (err) { console.error(err); }
+              }}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow transition-colors"
+            >
+              Add Goal
+            </button>
           </div>
-          <button
-            onClick={() => {
-              const name = window.prompt('Enter goal name:');
-              const target = parseFloat(window.prompt('Enter target amount (₹):') || '0');
-              const current = parseFloat(window.prompt('Enter current saved amount (₹):') || '0');
-              const date = window.prompt('Enter target date (YYYY-MM-DD):', '2027-12-31');
-              
-              if (name && target > 0) {
-                setGoals(prev => [...prev, { name, target, current, date: date || '' }]);
-              }
-            }}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow transition-colors"
-          >
-            Add Goal
-          </button>
+
+          <div className="space-y-4">
+            {goals.map((g) => {
+              const pct = g.target_amount > 0 ? (g.current_amount / g.target_amount) * 100 : 0;
+              return (
+                <div key={g.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white">{g.name} <span className="text-xxs ml-2 text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded-full">{g.priority}</span></h4>
+                      <p className="text-xxs text-slate-500">Target Date: {g.deadline || 'N/A'}</p>
+                    </div>
+                    <span className="text-xs font-bold text-white">
+                      ₹{g.current_amount.toLocaleString()} / <span className="text-slate-500">₹{g.target_amount.toLocaleString()}</span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${Math.min(pct, 100)}%` }} />
+                  </div>
+                  <div className="flex justify-between items-center text-xxs">
+                    <span className="text-slate-400 font-semibold">{pct.toFixed(0)}% Saved</span>
+                    <div className="space-x-2">
+                      <button
+                        onClick={async () => {
+                          const amt = parseFloat(window.prompt('Add amount saved (₹):') || '0');
+                          if (amt > 0) {
+                            try { await api.put(`/api/goals/${g.id}`, { ...g, current_amount: g.current_amount + amt }); fetchData(); } catch (err) { console.error(err); }
+                          }
+                        }}
+                        className="text-emerald-400 hover:underline"
+                      >
+                        Add Savings
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Delete goal?')) {
+                            try { await api.delete(`/api/goals/${g.id}`); fetchData(); } catch (err) { console.error(err); }
+                          }
+                        }}
+                        className="text-red-400 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {goals.length === 0 && <p className="text-slate-500 text-xs text-center py-4">No goals configured yet.</p>}
+          </div>
         </div>
 
-        <div className="space-y-4">
-          {goals.map((g, idx) => {
-            const pct = g.target > 0 ? (g.current / g.target) * 100 : 0;
-            return (
-              <div key={idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-semibold text-white">{g.name}</h4>
-                    <p className="text-xxs text-slate-500">Target Date: {g.date}</p>
-                  </div>
-                  <span className="text-xs font-bold text-white">
-                    ₹{g.current.toLocaleString()} / <span className="text-slate-500">₹{g.target.toLocaleString()}</span>
-                  </span>
-                </div>
-                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-indigo-500 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between items-center text-xxs">
-                  <span className="text-slate-400 font-semibold">{pct.toFixed(0)}% Saved</span>
-                  <div className="space-x-2">
-                    <button
-                      onClick={() => {
-                        const amt = parseFloat(window.prompt('Add amount saved (₹):') || '0');
-                        if (amt > 0) {
-                          setGoals(prev => prev.map((item, i) => i === idx ? { ...item, current: item.current + amt } : item));
-                        }
-                      }}
-                      className="text-emerald-400 hover:underline"
-                    >
-                      Add Savings
-                    </button>
-                    <button
-                      onClick={() => {
-                        setGoals(prev => prev.filter((_, i) => i !== idx));
-                      }}
-                      className="text-red-400 hover:underline"
-                    >
-                      Delete Goal
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        {/* AI Goal Planner Section */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <span className="text-xl">🎯</span>
+            <div>
+              <h3 className="text-sm font-bold text-white">AI Goal Planner</h3>
+              <p className="text-xxs text-emerald-400">Strategize your savings with AI Coach</p>
+            </div>
+          </div>
+
+          {plannerData && !plannerLoading && (
+            <div className="p-4 bg-gradient-to-br from-indigo-900/30 to-slate-900 border border-indigo-500/30 rounded-xl mb-6">
+              <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{plannerData.plan}</p>
+            </div>
+          )}
+          {plannerLoading && (
+            <div className="p-4 animate-pulse flex items-center space-x-3 text-slate-400 text-xs text-center justify-center">
+              <span>Applying budget and expense analysis algorithms...</span>
+            </div>
+          )}
+
+          <form onSubmit={handlePlannerSubmit} className="flex space-x-2">
+            <input
+              type="text"
+              value={plannerInput}
+              onChange={(e) => setPlannerInput(e.target.value)}
+              disabled={plannerLoading}
+              placeholder="e.g., How can I save for a ₹50,000 Vacation in 6 months?"
+              className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="submit"
+              disabled={plannerLoading || !plannerInput.trim()}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow disabled:opacity-50 transition-colors"
+            >
+              Plan Goal
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -785,7 +854,7 @@ export const DashboardPage = () => {
   return (
     <div className="flex bg-slate-950 min-h-screen font-sans text-slate-100 relative">
       <Sidebar currentTab={currentTab} onTabChange={setCurrentTab} />
-      
+
       <main className="flex-1 p-8 flex flex-col justify-between overflow-y-auto max-h-screen">
         <div>
           {/* Header */}
@@ -797,7 +866,7 @@ export const DashboardPage = () => {
               <p className="text-slate-400 mt-1 text-sm">Hi, {username}. Manage your assets and financial health.</p>
             </div>
             <div className="flex items-center space-x-4">
-              <button 
+              <button
                 onClick={handleLogout}
                 className="text-xs text-slate-400 hover:text-red-400 border border-slate-800 hover:border-red-950 px-3 py-1.5 rounded-xl transition-all"
               >
@@ -825,7 +894,7 @@ export const DashboardPage = () => {
             <h3 className="text-lg font-bold text-white mb-4">
               {editingTxId ? 'Edit Transaction Details' : 'Record New Transaction'}
             </h3>
-            
+
             <form onSubmit={handleSaveTransaction} className="space-y-4">
               <div>
                 <label className="block text-xxs font-bold text-slate-400 uppercase">Date</label>

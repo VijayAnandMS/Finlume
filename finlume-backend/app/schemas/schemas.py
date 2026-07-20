@@ -42,6 +42,31 @@ class TransactionOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+# --- Goal Schemas ---
+class GoalCreate(BaseModel):
+    name: str
+    target_amount: float
+    current_amount: float = 0.0
+    deadline: Optional[str] = None
+    status: str = "active"
+    monthly_target: Optional[float] = None
+    priority: str = "medium"
+
+class GoalOut(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    target_amount: float
+    current_amount: float
+    deadline: Optional[str]
+    status: str
+    monthly_target: Optional[float]
+    priority: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
 # --- Summary Schemas ---
 class CategorySummary(BaseModel):
     category: str
