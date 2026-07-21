@@ -6,7 +6,7 @@ from app.models.models import User, Transaction
 from app.routes.chat import compute_local_summary
 from app.ai.orchestrator import call_orchestrator
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Any
 import os
 from app.core.config import settings
 
@@ -18,6 +18,7 @@ class GoalPlannerRequest(BaseModel):
 class GoalPlannerResponse(BaseModel):
     plan: str
     agents_used: List[str]
+    explainability: Dict[str, Any] = {}
 
 @router.post("/goal-planner", response_model=GoalPlannerResponse)
 def generate_goal_plan(req: GoalPlannerRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -34,7 +35,8 @@ def generate_goal_plan(req: GoalPlannerRequest, current_user: User = Depends(get
             result = call_orchestrator(current_user.id, req.message, summary, txs_list)
             return GoalPlannerResponse(
                 plan=result["reply"],
-                agents_used=result["agents_used"]
+                agents_used=result["agents_used"],
+                explainability=result.get("explainability", {})
             )
         except Exception as e:
             print(f"GOAL PLANNER EXCEPTION: {e}")

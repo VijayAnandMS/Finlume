@@ -4,15 +4,49 @@ from datetime import datetime
 
 # --- User Schemas ---
 class UserCreate(BaseModel):
+    full_name: str
     username: str
+    email: str
     password: str
+    phone_number: Optional[str] = None
 
 class UserOut(BaseModel):
     id: int
+    full_name: Optional[str] = None
     username: str
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
+    is_email_verified: bool
+    profile_completed: bool
     created_at: datetime
-
+    
     model_config = ConfigDict(from_attributes=True)
+
+class VerifyEmailRequest(BaseModel):
+    email: str
+    otp: str
+
+class ResendOTPRequest(BaseModel):
+    email: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class UserProfileData(BaseModel):
+    income: Optional[float] = None
+    currency: Optional[str] = "USD"
+    salary_frequency: Optional[str] = None
+    monthly_expenses: Optional[str] = None
+    financial_goals: Optional[str] = None
+    risk_level: Optional[str] = None
+    investment_experience: Optional[str] = None
+    emergency_fund: Optional[float] = None
+    existing_investments: Optional[float] = None
+    loan_amount: Optional[float] = None
 
 class Token(BaseModel):
     access_token: str

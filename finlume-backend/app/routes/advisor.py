@@ -25,6 +25,7 @@ class AdvisorResponse(BaseModel):
     emergency_fund_status: Optional[str] = None
     monthly_cash_flow: Optional[float] = None
     risk_level: Optional[str] = None
+    explainability: Dict[str, Any] = {}
 
 @router.post("/advisor", response_model=AdvisorResponse)
 def get_advisor_recommendation(req: AdvisorRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -49,7 +50,8 @@ def get_advisor_recommendation(req: AdvisorRequest, current_user: User = Depends
                 savings_rate=advisor_data.get("savings_rate"),
                 emergency_fund_status=advisor_data.get("emergency_fund_status"),
                 monthly_cash_flow=advisor_data.get("monthly_cash_flow"),
-                risk_level=advisor_data.get("risk_level")
+                risk_level=advisor_data.get("risk_level"),
+                explainability=result.get("explainability", {})
             )
         except Exception as e:
             print(f"ADVISOR EXCEPTION: {e}")

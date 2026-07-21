@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -7,13 +7,55 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String, nullable=True) # made true for backward compatibility
     username = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=True) # nullable for old users
+    phone_number = Column(String, nullable=True)
     hashed_password = Column(String, nullable=False)
+    
+    is_email_verified = Column(Boolean, default=False)
+    profile_completed = Column(Boolean, default=False)
+    
+    # Auth recovery fields
+    verification_otp = Column(String, nullable=True)
+    otp_expiry = Column(DateTime, nullable=True)
+    reset_token = Column(String, nullable=True)
+    reset_token_expiry = Column(DateTime, nullable=True)
+    
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    last_login = Column(DateTime, nullable=True)
 
     # Relationships
+    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
     goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
+
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    
+    income = Column(Float, nullable=True)
+    currency = Column(String, default="USD")
+    salary_frequency = Column(String, nullable=True)
+    
+    # JSON or String arrays can be stored depending on DB, but SQLite natively supports JSON in newer versions, or we can use String
+    monthly_expenses = Column(String, nullable=True) # Store JSON string
+    financial_goals = Column(String, nullable=True) # Store JSON string
+    
+    risk_level = Column(String, nullable=True)
+    investment_experience = Column(String, nullable=True)
+    
+    emergency_fund = Column(Float, nullable=True)
+    existing_investments = Column(Float, nullable=True)
+    loan_amount = Column(Float, nullable=True)
+    
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = relationship("User", back_populates="profile")
 
 class Transaction(Base):
     __tablename__ = "transactions"

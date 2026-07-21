@@ -1,153 +1,142 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../lib/api';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { api } from '../services/api';
+import { Eye, EyeOff, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
 
 export const LoginPage = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
+  const navigate = useNavigate();
+  const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+
+  // Caps Lock UI listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.getModifierState('CapsLock')) {
+        setCapsLock(true);
+      } else {
+        setCapsLock(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyDown);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccessMsg('');
-    setLoading(true);
+    setIsLoading(true);
 
     try {
-      if (isLogin) {
-        // Login flow
-        const response = await api.post('/api/auth/login', {
-          username: username.trim(),
-          password
-        });
-        localStorage.setItem('token', response.data.access_token);
-        navigate('/dashboard');
-      } else {
-        // Register flow
-        await api.post('/api/auth/register', {
-          username: username.trim(),
-          password
-        });
-        setSuccessMsg('Registration successful! Please log in now.');
-        setIsLogin(true);
-        setPassword('');
-      }
+      const response = await api.customLogin(identity.trim(), password);
+      localStorage.setItem('token', response.access_token);
+      navigate('/dashboard');
     } catch (err: any) {
-      if (err.response && err.response.data && err.response.data.detail) {
-        setError(err.response.data.detail);
-      } else {
-        setError('Something went wrong. Please check if the backend is running.');
-      }
-    } finally {
-      setLoading(false);
+      setError(err.response?.data?.detail || 'Authentication failed');
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans relative overflow-hidden">
-      {/* Decorative background glow */}
-      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 selection:bg-indigo-500/30">
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <h2 className="text-center text-4xl font-extrabold tracking-tight text-white">
-          <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            Finlume AI
-          </span>
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-400">
-          Your personal AI-driven financial copilot
-        </p>
-      </div>
+        <div className="relative z-10 flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-black mb-4 shadow-[0_0_20px_rgba(99,102,241,0.5)]">
+            F.
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Welcome Back</h1>
+          <p className="text-slate-400 text-sm text-center">Access your financial intelligence copilot.</p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4">
-        <div className="bg-slate-900/60 backdrop-blur-xl py-8 px-4 shadow-2xl rounded-2xl sm:px-10 border border-slate-800/80">
-          <h3 className="text-xl font-bold text-white mb-6 text-center">
-            {isLogin ? 'Sign In' : 'Create an Account'}
-          </h3>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-950/40 border border-red-800/60 text-red-200 text-xs rounded-lg flex items-center space-x-2">
-              <span>⚠️</span>
+        {error && (
+          <div className="mb-6 p-4 rounded-xl text-sm font-medium text-center bg-red-500/10 border border-red-500/50 text-red-400 block break-words animate-fadeIn flex flex-col items-center">
+            <div className="flex items-center justify-center mb-1">
+              <AlertCircle className="w-4 h-4 mr-2" />
               <span>{error}</span>
             </div>
-          )}
+            {error.toLowerCase().includes('verify') && (
+              <Link to={`/verify-email?email=${encodeURIComponent(identity)}`} className="text-indigo-400 font-bold hover:text-indigo-300 mt-1">
+                Check verification status
+              </Link>
+            )}
+          </div>
+        )}
 
-          {successMsg && (
-            <div className="mb-4 p-3 bg-emerald-950/40 border border-emerald-800/60 text-emerald-200 text-xs rounded-lg flex items-center space-x-2">
-              <span>✅</span>
-              <span>{successMsg}</span>
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="relative z-10 space-y-5">
+          <div>
+            <input
+              type="text"
+              placeholder="Username or Email Address"
+              required
+              value={identity}
+              onChange={(e) => setIdentity(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium"
+            />
+          </div>
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="username" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Username
-              </label>
-              <div className="mt-1 relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">👤</span>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. vijay"
-                  className="appearance-none block w-full pl-9 pr-3 py-2.5 border border-slate-800 rounded-xl bg-slate-950 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">🔒</span>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="appearance-none block w-full pl-9 pr-3 py-2.5 border border-slate-800 rounded-xl bg-slate-950 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-lg text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Sign Up'}
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-6 border-t border-slate-800/80 pt-4 text-center">
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-4 pr-12 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium"
+            />
             <button
               type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError('');
-                setSuccessMsg('');
-              }}
-              className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none transition-colors"
             >
-              {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
+
+          {/* Caps Lock Indicator */}
+          {capsLock && (
+            <div className="flex items-center text-amber-500 text-xs font-semibold px-1 animate-pulse">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              Caps Lock is ON
+            </div>
+          )}
+
+          <div className="flex justify-between items-center px-1">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" className="rounded bg-slate-900 border-slate-700 text-indigo-500 focus:ring-indigo-500/50 w-4 h-4" />
+              <span className="text-xs text-slate-400 font-medium hover:text-slate-300">Remember me</span>
+            </label>
+            <Link to="/forgot-password" className="text-xs text-indigo-400 font-bold hover:text-indigo-300 transition-colors">Forgot Password?</Link>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading || !identity || !password}
+            className="w-full flex items-center justify-center bg-white text-black font-bold rounded-xl py-3.5 hover:bg-slate-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+          >
+            {isLoading ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Authenticating...</> : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="relative z-10 mt-8 text-center pt-6 border-t border-slate-800">
+          <p className="text-slate-400 text-sm font-medium">
+            New to Finlume? <Link to="/register" className="text-white font-bold hover:text-indigo-200 transition-colors ml-1">Create an account</Link>
+          </p>
         </div>
+      </div>
+
+      <div className="mt-8 text-xs font-mono text-slate-600 tracking-widest uppercase">
+        Enterprise SECURE &bull; AI OPERATING SYSTEM
       </div>
     </div>
   );

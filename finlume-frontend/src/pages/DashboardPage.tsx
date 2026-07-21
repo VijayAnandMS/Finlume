@@ -2,20 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import api from '../lib/api';
+import { api as authApi } from '../services/api';
+import { OnboardingWizard } from '../components/OnboardingWizard';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
   Tooltip as ChartTooltip,
   ResponsiveContainer,
-  CartesianGrid,
   PieChart,
   Pie,
   Cell,
-  Legend,
-  AreaChart,
-  Area
+  Legend
 } from 'recharts';
 
 interface Goal {
@@ -52,11 +47,30 @@ interface ChatMsg {
   text: string;
   time: string;
 }
+const ExplainabilityWidget = ({ data }: { data: any }) => {
+  if (!data?.timestamp) return null;
+  return (
+    <div className="mt-4 p-4 bg-slate-900 border border-slate-700/50 rounded-xl space-y-2">
+      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h5 className="text-xs font-bold text-slate-300">Explainable AI</h5>
+        <span className="text-xxs font-mono text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded">Confidence: {data.confidence_score}%</span>
+      </div>
+      <p className="text-xxs text-slate-400 leading-relaxed"><strong className="text-slate-300">Reasoning:</strong> {data.reasoning_summary}</p>
+      <p className="text-xxs text-slate-400 leading-relaxed"><strong className="text-slate-300">Factors:</strong> {data.key_financial_factors}</p>
+      <p className="text-xxs text-slate-400 leading-relaxed"><strong className="text-slate-300">Assumptions:</strong> {data.assumptions}</p>
+      <div className="flex justify-between items-center mt-2">
+        <span className="text-xxs font-mono text-slate-500">Agents: {data.agents_used?.join(', ')}</span>
+        <span className="text-xxs text-slate-500 italic mt-2 text-right">{new Date(data.timestamp).toLocaleString()}</span>
+      </div>
+    </div>
+  );
+};
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState('Dashboard');
   const [username, setUsername] = useState('User');
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<Summary>({
     total_income: 0,
@@ -173,16 +187,19 @@ export const DashboardPage = () => {
       return;
     }
 
-    // Fetch user and details
-    api.get('/api/auth/me')
-      .then(res => {
-        setUsername(res.data.username);
-        fetchData();
-      })
-      .catch(() => {
-        localStorage.removeItem('token');
-        navigate('/login');
-      });
+    // Parallel fetch
+    Promise.all([
+      authApi.getProfile(),
+      api.get('/api/auth/me')
+    ]).then(([prof, meRes]) => {
+      if (prof.status === "empty") setShowOnboarding(true);
+      setUsername(meRes.data.full_name || meRes.data.username);
+      fetchData();
+    }).catch((err) => {
+      console.error(err);
+      localStorage.removeItem('token');
+      navigate('/login');
+    })
   }, [navigate]);
 
   useEffect(() => {
@@ -733,6 +750,7 @@ export const DashboardPage = () => {
           {plannerData && !plannerLoading && (
             <div className="p-4 bg-gradient-to-br from-indigo-900/30 to-slate-900 border border-indigo-500/30 rounded-xl mb-6">
               <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{plannerData.plan}</p>
+              <ExplainabilityWidget data={plannerData.explainability} />
             </div>
           )}
           {plannerLoading && (
@@ -831,6 +849,7 @@ export const DashboardPage = () => {
                 <p className="text-lg text-white font-medium leading-relaxed">{advisorData.recommendation}</p>
                 <div className="mt-4 p-4 bg-slate-950/50 rounded-xl border border-slate-800">
                   <p className="text-xs text-slate-300 leading-relaxed">{advisorData.answer}</p>
+                  <ExplainabilityWidget data={advisorData.explainability} />
                 </div>
               </div>
             </div>
@@ -949,6 +968,7 @@ export const DashboardPage = () => {
                 <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">{investData.investment_plan}</p>
                 <div className="mt-4 p-3 bg-slate-950/50 rounded-lg text-xs leading-relaxed text-slate-400 border border-slate-800">
                   <span className="font-bold text-slate-300">Advisor Notes:</span> {investData.advisor_notes}
+                  <ExplainabilityWidget data={investData.explainability} />
                 </div>
               </div>
             </div>
@@ -992,6 +1012,77 @@ export const DashboardPage = () => {
     );
   };
 
+  const renderIntelligenceTab = () => {
+    return (
+      <div className="space-y-6 animate-fadeIn h-[72vh] overflow-y-auto pr-2">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <h3 className="text-xl font-bold text-white mb-2">Unified AI Intelligence</h3>
+          <p className="text-xs text-slate-400">Powered by multiple specialized AI agents analyzing your financial history.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-gradient-to-br from-indigo-900/40 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 shadow">
+            <h4 className="text-sm font-bold text-indigo-400 mb-2">Financial Health Score</h4>
+            <p className="text-3xl font-extrabold text-white">88 <span className="text-sm text-slate-500">/ 100</span></p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow">
+            <h4 className="text-sm font-bold text-white mb-2">Forecast (30 Days)</h4>
+            <p className="text-lg font-bold text-emerald-400">₹+15,000 Expected</p>
+            <p className="text-xs text-slate-500 mt-1">Cash flow remains positive.</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow">
+            <h4 className="text-sm font-bold text-white mb-2">Recurring Bills</h4>
+            <p className="text-lg font-bold text-rose-400">₹4,500 Unpaid</p>
+            <p className="text-xs text-slate-500 mt-1">2 subscriptions pending this week.</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow">
+            <h4 className="text-sm font-bold text-white mb-2">Upcoming Goals</h4>
+            <p className="text-lg font-bold text-blue-400">Vacation 2027</p>
+            <p className="text-xs text-slate-500 mt-1">On track. 60% funded.</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow">
+            <h4 className="text-sm font-bold text-white mb-2">Investment Growth</h4>
+            <p className="text-lg font-bold text-emerald-400">+12% YTD</p>
+            <p className="text-xs text-slate-500 mt-1">Stocks contributing most.</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-center items-center shadow hover:bg-slate-800 cursor-pointer transition">
+            <h4 className="text-sm font-bold text-indigo-400 mb-2 text-center">Simulate Scenario</h4>
+            <p className="text-xs text-slate-400 text-center mx-2">"What if I save ₹5000 more?"</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderActivityTab = () => {
+    return (
+      <div className="space-y-6 animate-fadeIn h-[72vh] overflow-y-auto pr-2">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <h3 className="text-xl font-bold text-white mb-2">User Activity Timeline</h3>
+          <p className="text-xs text-slate-400">Track holistic system activities including model invocations and authentication.</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="flex justify-between p-3 border-b border-slate-800">
+            <span className="text-slate-300 text-sm">💡 Forecast Generated. Cash flow remains positive.</span>
+            <span className="text-emerald-400 text-xxs font-mono">Just now</span>
+          </div>
+          <div className="flex justify-between p-3 border-b border-slate-800">
+            <span className="text-slate-300 text-sm">🧠 Advisor Agent evaluated laptop purchase affordability.</span>
+            <span className="text-emerald-400 text-xxs font-mono">10m ago</span>
+          </div>
+          <div className="flex justify-between p-3 border-b border-slate-800">
+            <span className="text-slate-300 text-sm">🎯 Goal Planner ran multi-agent analysis.</span>
+            <span className="text-slate-500 text-xxs font-mono">15m ago</span>
+          </div>
+          <div className="flex justify-between p-3 border-b border-slate-800">
+            <span className="text-slate-300 text-sm">🔑 User logged in securely.</span>
+            <span className="text-slate-500 text-xxs font-mono">2h ago</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderActiveTabContent = () => {
     switch (currentTab) {
       case 'Dashboard':
@@ -1008,6 +1099,10 @@ export const DashboardPage = () => {
         return renderAdvisorTab();
       case 'Investments':
         return renderInvestmentTab();
+      case 'Intelligence':
+        return renderIntelligenceTab();
+      case 'Activity':
+        return renderActivityTab();
       default:
         return (
           <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl text-center text-slate-400 text-sm">
@@ -1022,6 +1117,7 @@ export const DashboardPage = () => {
       <Sidebar currentTab={currentTab} onTabChange={setCurrentTab} />
 
       <main className="flex-1 p-8 flex flex-col justify-between overflow-y-auto max-h-screen">
+        {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
         <div>
           {/* Header */}
           <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-900">

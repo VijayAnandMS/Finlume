@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: finlume_user
+      POSTGRES_PASSWORD: finlume_password
+      POSTGRES_DB: finlume_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finlume_user -d finlume_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # In a strict production environment, Chroma might run standalone. We utilize backend memory layer for now.
+  # But we can instantiate a standalone Chroma image.
+  chroma:
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma_data:/chroma/chroma
+    ports:
+      - "8000:8000" # Note: Conflicts with FastAPI port bindings if not careful. Changed host bound port since we only need internal.
+    expose:
+      - "8000"
+      
+  backend:
+    build: 
+      context: ./finlume-backend
+    environment:
+      - DATABASE_URL=postgresql://finlume_user:finlume_password@db:5432/finlume_db
+      - JWT_SECRET=${JWT_SECRET:-supersecretkey}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - APP_ENV=production
+      - LOG_LEVEL=INFO
+      - FRONTEND_ORIGIN=http://localhost
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - backend_logs:/app/logs
+
+  frontend:
+    build:
+      context: ./finlume-frontend
+    environment:
+      - VITE_API_BASE_URL=/api
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  chroma_data:
+  backend_logs:

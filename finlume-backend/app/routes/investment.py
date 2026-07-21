@@ -31,6 +31,7 @@ class InvestmentResponse(BaseModel):
     goal_alignment: str
     advisor_notes: str
     investment_plan: str
+    explainability: Dict[str, Any] = {}
 
 @router.post("/investment", response_model=InvestmentResponse)
 def generate_investment_plan(req: InvestmentRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -66,6 +67,8 @@ Existing: {req.existing}
                 text = text.replace("```", "").strip()
                 
             parsed = json.loads(text)
+            if "explainability" in result:
+                parsed["explainability"] = result["explainability"]
             return InvestmentResponse(**parsed)
         except Exception as e:
             print(f"INVESTMENT PLANNER EXCEPTION: {e}")

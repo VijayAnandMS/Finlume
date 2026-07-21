@@ -1,0 +1,75 @@
+name: Finlume CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend-checks:
+    name: Backend Lint, Test, & Docker checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          cd finlume-backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest flake8 slowapi python-json-logger
+
+      - name: Run Backend Linting
+        run: |
+          cd finlume-backend
+          flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run Backend Tests
+        run: |
+          cd finlume-backend
+          pytest tests/ -v
+
+  frontend-checks:
+    name: Frontend Lint & Build checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd finlume-frontend
+          npm ci
+
+      - name: Validate React Build
+        run: |
+          cd finlume-frontend
+          npm run build
+
+  docker-compose-test:
+    name: Validate Docker Compose Assembly
+    needs: [backend-checks, frontend-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        
+      - name: Dry-Run Docker Compose Config
+        run: docker-compose config
+        
+      - name: Build Images
+        run: docker-compose build
