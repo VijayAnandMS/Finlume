@@ -152,11 +152,11 @@ export const DashboardPage = () => {
   };
 
   // Investment state
-  const [investInput, setInvestInput] = useState({
+  const [investInput, setInvestInput] = useState<any>({
     message: '',
-    income: 0,
-    expenses: 0,
-    savings: 0,
+    income: '',
+    expenses: '',
+    savings: '',
     risk: 'Medium',
     horizon: 'Medium Term',
     existing: ''
@@ -169,13 +169,19 @@ export const DashboardPage = () => {
     if (!investInput.message.trim()) return;
     setInvestLoading(true);
     try {
-      const res = await api.post('/api/agents/investment', investInput);
+      const payload = {
+        ...investInput,
+        income: Number(investInput.income) || 0,
+        expenses: Number(investInput.expenses) || 0,
+        savings: Number(investInput.savings) || 0
+      }
+      const res = await api.post('/api/agents/investment', payload);
       setInvestData(res.data);
     } catch (err) {
       console.error(err);
     } finally {
       setInvestLoading(false);
-      setInvestInput(prev => ({ ...prev, message: '' }));
+      setInvestInput((prev: any) => ({ ...prev, message: '' }));
     }
   };
 
@@ -187,19 +193,15 @@ export const DashboardPage = () => {
       return;
     }
 
-    // Parallel fetch
-    Promise.all([
-      authApi.getProfile(),
-      api.get('/api/auth/me')
-    ]).then(([prof, meRes]) => {
-      if (prof.status === "empty") setShowOnboarding(true);
-      setUsername(meRes.data.full_name || meRes.data.username);
-      fetchData();
-    }).catch((err) => {
-      console.error(err);
-      localStorage.removeItem('token');
-      navigate('/login');
-    })
+    api.get('/api/auth/me')
+      .then(meRes => setUsername(meRes.data.full_name || meRes.data.username))
+      .catch((err) => {
+        console.error(err);
+        localStorage.removeItem('token');
+        navigate('/login');
+      });
+
+    fetchData();
   }, [navigate]);
 
   useEffect(() => {
@@ -210,8 +212,20 @@ export const DashboardPage = () => {
 
   const fetchData = async () => {
     try {
+      const pRes = await authApi.getProfile();
+      if (pRes.status === "empty") {
+        setShowOnboarding(true);
+      }
+
       const summaryRes = await api.get('/api/summary/');
-      setSummary(summaryRes.data);
+      const sumData = summaryRes.data;
+
+      // Hydrate with profile baseline if transactions are zero
+      if (sumData.total_income === 0 && pRes.income) {
+        sumData.total_income = pRes.income;
+        sumData.net = sumData.total_income - sumData.total_expense;
+      }
+      setSummary(sumData);
 
       const txRes = await api.get('/api/transactions/');
       setTransactions(txRes.data);
@@ -978,9 +992,9 @@ export const DashboardPage = () => {
         <div className="p-4 border-t border-slate-800 bg-slate-950/40">
           <form onSubmit={handleInvestSubmit} className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-              <input type="number" placeholder="Income" value={investInput.income || ''} onChange={e => setInvestInput({ ...investInput, income: parseFloat(e.target.value) || 0 })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
-              <input type="number" placeholder="Expenses" value={investInput.expenses || ''} onChange={e => setInvestInput({ ...investInput, expenses: parseFloat(e.target.value) || 0 })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
-              <input type="number" placeholder="Savings" value={investInput.savings || ''} onChange={e => setInvestInput({ ...investInput, savings: parseFloat(e.target.value) || 0 })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
+              <input type="number" placeholder="Enter your monthly income" value={investInput.income} onChange={e => setInvestInput({ ...investInput, income: e.target.value.replace(/^0+(?=\d)/, '') })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
+              <input type="number" placeholder="Enter your monthly expenses" value={investInput.expenses} onChange={e => setInvestInput({ ...investInput, expenses: e.target.value.replace(/^0+(?=\d)/, '') })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
+              <input type="number" placeholder="Enter your savings" value={investInput.savings} onChange={e => setInvestInput({ ...investInput, savings: e.target.value.replace(/^0+(?=\d)/, '') })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
               <select value={investInput.risk} onChange={e => setInvestInput({ ...investInput, risk: e.target.value })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs">
                 <option value="Low">Low Risk</option>
                 <option value="Medium">Medium Risk</option>
@@ -1117,7 +1131,7 @@ export const DashboardPage = () => {
       <Sidebar currentTab={currentTab} onTabChange={setCurrentTab} />
 
       <main className="flex-1 p-8 flex flex-col justify-between overflow-y-auto max-h-screen">
-        {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
+        {showOnboarding && <OnboardingWizard onComplete={() => { setShowOnboarding(false); fetchData(); }} />}
         <div>
           {/* Header */}
           <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-900">
@@ -1207,9 +1221,9 @@ export const DashboardPage = () => {
                   type="number"
                   step="0.01"
                   required
-                  placeholder="e.g. 500"
+                  placeholder="Enter your expense amount"
                   value={txForm.amount}
-                  onChange={(e) => setTxForm(prev => ({ ...prev, amount: e.target.value }))}
+                  onChange={(e) => setTxForm(prev => ({ ...prev, amount: e.target.value.replace(/^0+(?=\d)/, '') }))}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>

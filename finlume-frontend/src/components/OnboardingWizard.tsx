@@ -5,18 +5,23 @@ import { Loader2, Settings, FileCheck } from 'lucide-react';
 export const OnboardingWizard = ({ onComplete }: { onComplete: () => void }) => {
     const [step, setStep] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
-    const [formData, setFormData] = useState({
-        income: 0,
+    const [formData, setFormData] = useState<any>({
+        income: '',
         currency: 'USD',
         salary_frequency: 'Monthly',
         monthly_expenses: '{}',
         financial_goals: '[]',
         risk_level: 'Moderate',
         investment_experience: 'Intermediate',
-        emergency_fund: 0,
-        existing_investments: 0,
-        loan_amount: 0
+        emergency_fund: '',
+        existing_investments: '',
+        loan_amount: ''
     });
+
+    const handleNumInput = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+        let val = e.target.value.replace(/^0+(?=\d)/, '');
+        setFormData({ ...formData, [field]: val });
+    };
 
     const steps = [
         { title: "Welcome to Finlume AI", desc: "Let's calibrate your autonomous financial operating system." },
@@ -31,7 +36,13 @@ export const OnboardingWizard = ({ onComplete }: { onComplete: () => void }) => 
     const handleSubmit = async () => {
         setIsSaving(true);
         try {
-            await api.updateProfile(formData);
+            await api.updateProfile({
+                ...formData,
+                income: Number(formData.income) || 0,
+                emergency_fund: Number(formData.emergency_fund) || 0,
+                existing_investments: Number(formData.existing_investments) || 0,
+                loan_amount: Number(formData.loan_amount) || 0
+            });
             onComplete();
         } catch (e) {
             console.error("Profile sync failed", e);
@@ -68,7 +79,7 @@ export const OnboardingWizard = ({ onComplete }: { onComplete: () => void }) => 
                         <div className="space-y-4 pt-4">
                             <div>
                                 <label className="block text-xs text-slate-400 mb-1">Estimated Monthly Income</label>
-                                <input type="number" required value={formData.income} onChange={e => setFormData({ ...formData, income: Number(e.target.value) })} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white" />
+                                <input type="number" placeholder="Enter your monthly income" required value={formData.income} onChange={e => handleNumInput(e, 'income')} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -133,15 +144,15 @@ export const OnboardingWizard = ({ onComplete }: { onComplete: () => void }) => 
                         <div className="space-y-4 pt-4">
                             <div>
                                 <label className="block text-xs text-slate-400 mb-1">Current Liquid Savings</label>
-                                <input type="number" required value={formData.emergency_fund} onChange={e => setFormData({ ...formData, emergency_fund: Number(e.target.value) })} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white" />
+                                <input type="number" placeholder="Enter your savings/emergency fund" required value={formData.emergency_fund} onChange={e => handleNumInput(e, 'emergency_fund')} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white" />
                             </div>
                             <div>
                                 <label className="block text-xs text-slate-400 mb-1">Existing Investments (Approx)</label>
-                                <input type="number" required value={formData.existing_investments} onChange={e => setFormData({ ...formData, existing_investments: Number(e.target.value) })} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white" />
+                                <input type="number" placeholder="Enter your current investments" required value={formData.existing_investments} onChange={e => handleNumInput(e, 'existing_investments')} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white" />
                             </div>
                             <div>
                                 <label className="block text-xs text-slate-400 mb-1">Outstanding Loans</label>
-                                <input type="number" required value={formData.loan_amount} onChange={e => setFormData({ ...formData, loan_amount: Number(e.target.value) })} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white" />
+                                <input type="number" placeholder="Enter your loan amount" required value={formData.loan_amount} onChange={e => handleNumInput(e, 'loan_amount')} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white" />
                             </div>
                         </div>
                     )}
