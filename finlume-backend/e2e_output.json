@@ -1,4 +1,7 @@
 {
-    "reply": "Your highest expense category is Rent at about \u20b920000.00. Consider setting a hard monthly limit for this category.",
-    "agents_used": []
+    "reply": "You spent a total of **\u20b937,000.00**. Here is the breakdown of your top spending categories:\n*   **Rent:** \u20b920,000.00\n*   **Food:** \u20b912,000.00\n*   **Entertainment:** \u20b95,000.00\n\n### Budget Suggestions:\nBased on your spending, you have a net surplus of **\u20b923,000.00**. \n\n*   **Savings Target:** It is recommended to save at least 50% of your surplus, which is **\u20b911,500.00**.\n*   **Alert:** Your Rent expense (\u20b920,000.00) takes up more than 30% of your income. It would be wise to find ways to reduce this cost or keep other discretionary spending (like Entertainment) to a minimum to maintain a healthy financial buffer.",
+    "agents_used": [
+        "expense_agent",
+        "budget_agent"
+    ]
 }

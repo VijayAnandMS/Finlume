@@ -3,17 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import api from '../lib/api';
 import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip as ChartTooltip,
   ResponsiveContainer,
+  CartesianGrid,
   PieChart,
   Pie,
   Cell,
-  Tooltip as ChartTooltip,
   Legend,
   AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid
+  Area
 } from 'recharts';
 
 interface Goal {
@@ -132,6 +134,34 @@ export const DashboardPage = () => {
     } finally {
       setAdvisorLoading(false);
       setAdvisorInput('');
+    }
+  };
+
+  // Investment state
+  const [investInput, setInvestInput] = useState({
+    message: '',
+    income: 0,
+    expenses: 0,
+    savings: 0,
+    risk: 'Medium',
+    horizon: 'Medium Term',
+    existing: ''
+  });
+  const [investLoading, setInvestLoading] = useState(false);
+  const [investData, setInvestData] = useState<any>(null);
+
+  const handleInvestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!investInput.message.trim()) return;
+    setInvestLoading(true);
+    try {
+      const res = await api.post('/api/agents/investment', investInput);
+      setInvestData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setInvestLoading(false);
+      setInvestInput(prev => ({ ...prev, message: '' }));
     }
   };
 
@@ -311,8 +341,8 @@ export const DashboardPage = () => {
               </h3>
             </div>
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl border ${summary.net >= 0
-                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+              ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+              : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
               }`}>
               ⚖️
             </div>
@@ -436,8 +466,8 @@ export const DashboardPage = () => {
                     <td className="py-3 px-4 font-semibold text-white">{tx.category}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-0.5 rounded-full text-xxs font-semibold uppercase ${tx.type === 'income'
-                          ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                          : 'bg-slate-800 border border-slate-700/80 text-slate-400'
+                        ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                        : 'bg-slate-800 border border-slate-700/80 text-slate-400'
                         }`}>
                         {tx.type}
                       </span>
@@ -502,8 +532,8 @@ export const DashboardPage = () => {
             >
               <div
                 className={`max-w-md p-3.5 rounded-2xl text-xs leading-relaxed shadow ${msg.sender === 'user'
-                    ? 'bg-blue-600 text-white rounded-tr-none'
-                    : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/50'
+                  ? 'bg-blue-600 text-white rounded-tr-none'
+                  : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/50'
                   }`}
                 style={{ whiteSpace: 'pre-wrap' }}
               >
@@ -579,10 +609,10 @@ export const DashboardPage = () => {
                 <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-300 ${isWarn
-                        ? 'bg-rose-500'
-                        : isNear
-                          ? 'bg-amber-500'
-                          : 'bg-blue-500'
+                      ? 'bg-rose-500'
+                      : isNear
+                        ? 'bg-amber-500'
+                        : 'bg-blue-500'
                       }`}
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
@@ -828,6 +858,140 @@ export const DashboardPage = () => {
     );
   };
 
+  const renderInvestmentTab = () => {
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#8dd1e1', '#a4de6c', '#d0ed57'];
+    let pieData: any[] = [];
+    if (investData?.recommended_asset_allocation) {
+      pieData = Object.entries(investData.recommended_asset_allocation)
+        .map(([key, value]) => ({ name: key, value: Number(value) }))
+        .filter(item => item.value > 0);
+    }
+
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl h-[72vh] flex flex-col justify-between overflow-hidden animate-fadeIn">
+        <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/20 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-xl">📈</span>
+            <div>
+              <h3 className="text-sm font-bold text-white">Investment Intelligence</h3>
+              <p className="text-xxs text-blue-400">Online • AI-driven Portfolio Recommendations</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-950/30">
+          {!investData && !investLoading && (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
+              <span className="text-4xl">💡</span>
+              <h4 className="text-lg font-bold text-white">Ask for Investment Advice</h4>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Get a comprehensive asset allocation breakdown based on your active financial data.
+              </p>
+            </div>
+          )}
+
+          {investLoading && (
+            <div className="h-full flex flex-col items-center justify-center space-y-4">
+              <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs text-indigo-400 font-semibold animate-pulse">Running Orchestrator analysis across Expense, Budget & Advisor...</p>
+            </div>
+          )}
+
+          {investData && !investLoading && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-center shadow">
+                  <p className="text-xxs text-slate-400 uppercase font-bold">Investment Score</p>
+                  <p className="text-2xl font-extrabold text-white">{investData.investment_score} / 100</p>
+                </div>
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-center shadow">
+                  <p className="text-xxs text-slate-400 uppercase font-bold">Risk Meter</p>
+                  <p className="text-2xl font-extrabold text-rose-400">{investData.risk_level}</p>
+                </div>
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-center shadow">
+                  <p className="text-xxs text-slate-400 uppercase font-bold">Recommended Monthly</p>
+                  <p className="text-2xl font-extrabold text-emerald-400">₹{investData.recommended_monthly_investment.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl shadow">
+                  <h4 className="text-xs font-bold text-indigo-400 uppercase mb-4">Asset Allocation (%)</h4>
+                  {pieData.length > 0 ? (
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+                            {pieData.map((_e: any, index: number) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                          </Pie>
+                          <ChartTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#fff' }} itemStyle={{ color: '#fff', fontSize: '12px' }} />
+                          <Legend wrapperStyle={{ fontSize: '11px', color: '#cbd5e1' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : <p className="text-slate-500 text-xs text-center py-10">No allocation data.</p>}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl shadow">
+                    <h4 className="text-xs font-bold text-indigo-400 uppercase mb-2">Emergency Fund Check</h4>
+                    <p className="text-sm text-slate-200 leading-relaxed">{investData.emergency_fund_check}</p>
+                  </div>
+                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl shadow">
+                    <h4 className="text-xs font-bold text-indigo-400 uppercase mb-2">Goal Alignment</h4>
+                    <p className="text-sm text-slate-200 leading-relaxed">{investData.goal_alignment}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 bg-indigo-900/30 border border-indigo-500/30 rounded-xl shadow-lg">
+                <h4 className="text-xs font-bold text-indigo-400 uppercase mb-3">Action Plan & Notes</h4>
+                <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">{investData.investment_plan}</p>
+                <div className="mt-4 p-3 bg-slate-950/50 rounded-lg text-xs leading-relaxed text-slate-400 border border-slate-800">
+                  <span className="font-bold text-slate-300">Advisor Notes:</span> {investData.advisor_notes}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-slate-800 bg-slate-950/40">
+          <form onSubmit={handleInvestSubmit} className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+              <input type="number" placeholder="Income" value={investInput.income || ''} onChange={e => setInvestInput({ ...investInput, income: parseFloat(e.target.value) || 0 })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
+              <input type="number" placeholder="Expenses" value={investInput.expenses || ''} onChange={e => setInvestInput({ ...investInput, expenses: parseFloat(e.target.value) || 0 })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
+              <input type="number" placeholder="Savings" value={investInput.savings || ''} onChange={e => setInvestInput({ ...investInput, savings: parseFloat(e.target.value) || 0 })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
+              <select value={investInput.risk} onChange={e => setInvestInput({ ...investInput, risk: e.target.value })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs">
+                <option value="Low">Low Risk</option>
+                <option value="Medium">Medium Risk</option>
+                <option value="High">High Risk</option>
+              </select>
+              <select value={investInput.horizon} onChange={e => setInvestInput({ ...investInput, horizon: e.target.value })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs">
+                <option value="Short Term">Short Term</option>
+                <option value="Medium Term">Medium Term</option>
+                <option value="Long Term">Long Term</option>
+              </select>
+              <input type="text" placeholder="Existing (e.g. 50k in Stocks)" value={investInput.existing} onChange={e => setInvestInput({ ...investInput, existing: e.target.value })} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs" />
+            </div>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={investInput.message}
+                onChange={e => setInvestInput({ ...investInput, message: e.target.value })}
+                disabled={investLoading}
+                placeholder="Ask about your investment opportunities..."
+                className="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-800 text-white rounded-xl text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button type="submit" disabled={investLoading || !investInput.message.trim()} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow disabled:opacity-50 transition-colors">
+                Analyze
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   const renderActiveTabContent = () => {
     switch (currentTab) {
       case 'Dashboard':
@@ -842,6 +1006,8 @@ export const DashboardPage = () => {
         return renderGoalsTab();
       case 'Advisor':
         return renderAdvisorTab();
+      case 'Investments':
+        return renderInvestmentTab();
       default:
         return (
           <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl text-center text-slate-400 text-sm">

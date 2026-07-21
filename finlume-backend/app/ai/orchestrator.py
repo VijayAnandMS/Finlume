@@ -55,30 +55,53 @@ GOAL_PLANNER_TOOL_SCHEMA = {
     }
 }
 
+INVESTMENT_TOOL_SCHEMA = {
+    "name": "investment_agent",
+    "description": "Call this when the user asks for investment advice, where to invest, asset allocation, or portfolio suggestions.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "question": {"type": "string", "description": "The exact user question regarding investment"},
+            "income": {"type": "number", "description": "Current Income"},
+            "expenses": {"type": "number", "description": "Current Expenses"},
+            "savings": {"type": "number", "description": "Monthly Savings"},
+            "risk": {"type": "string", "description": "Risk Preference"},
+            "horizon": {"type": "string", "description": "Investment Horizon"},
+            "existing": {"type": "string", "description": "Existing Investments"}
+        },
+        "required": ["question", "income", "expenses", "savings", "risk", "horizon", "existing"]
+    }
+}
+
 from app.ai.llm_client import call_llm_with_tools
 import json
 
 def call_orchestrator(user_id: int, user_message: str, summary_data: Dict[str, Any], transactions: List[Dict[str, Any]]) -> Dict[str, Any]:
     messages = [{"role": "user", "content": user_message}]
     
-    system_prompt = (
-        "You are Finlume AI, a friendly, professional financial coach.\n"
-        "You have access to tools that can analyze expenses, plan budgets, and act as a financial advisor based on the user's data.\n"
-        "Use these tools if the user's request requires it, or answer directly if you don't need them.\n"
-        "The planner should NOT call the advisor for unrelated questions.\n"
-        f"For reference, the current user_id is {user_id}.\n"
-        "Provide concise, encouraging, and highly actionable advice (1-3 paragraphs max)."
-    )
+    TOOLS = [EXPENSE_TOOL_SCHEMA, BUDGET_TOOL_SCHEMA, ADVISOR_TOOL_SCHEMA, GOAL_PLANNER_TOOL_SCHEMA, INVESTMENT_TOOL_SCHEMA]
+    
+    SYSTEM_PROMPT = """You are the central Orchestrator Agent for Finlume AI.
+Your job is to read the user's message, understand what they need, and call the appropriate agent/tools to get the data.
+You have the following tools:
+- expense_agent
+- budget_agent
+- advisor_agent
+- goal_planner_agent
+- investment_agent
 
-    tools = [EXPENSE_TOOL_SCHEMA, BUDGET_TOOL_SCHEMA, ADVISOR_TOOL_SCHEMA, GOAL_PLANNER_TOOL_SCHEMA]
+If the investment_agent tool is called, you MUST output ONLY the EXACT JSON string returned by the tool as your final reply. Do not add any other conversational text or markdown around it.
+
+If multiple tools are needed, you can call them. But you must answer the user's question directly based on their responses.
+"""
     agents_used = []
     
     max_iterations = 5
     for _ in range(max_iterations):
         response = call_llm_with_tools(
-            system_prompt=system_prompt,
+            system_prompt=SYSTEM_PROMPT,
             messages=messages,
-            tools=tools,
+            tools=TOOLS,
             max_tokens=1024
         )
         
@@ -139,6 +162,16 @@ def call_orchestrator(user_id: int, user_message: str, summary_data: Dict[str, A
                 target = args.get("target_amount", 0.0)
                 deadline = args.get("deadline", "TBD")
                 result_str = plan_goal(user_id, goal_name, target, deadline, summary_data, transactions)
+            elif tool_name == "investment_agent":
+                from app.agents.investment_agent import plan_investment
+                question = args.get("question", "I need investment advice.")
+                income = args.get("income", 0.0)
+                expenses = args.get("expenses", 0.0)
+                savings = args.get("savings", 0.0)
+                risk = args.get("risk", "Medium")
+                horizon = args.get("horizon", "Medium Term")
+                existing = args.get("existing", "")
+                result_str = plan_investment(user_id, question, income, expenses, savings, risk, horizon, existing, summary_data, transactions)
             else:
                 result_str = f"Error: Unknown tool {tool_name}"
                 

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.routes import auth, transactions, summary, chat, advisor, goals, goal_planner
+from app.routes import auth, transactions, summary, chat, advisor, goals, goal_planner, investment
 
 from contextlib import asynccontextmanager
 
@@ -39,9 +39,9 @@ app.include_router(chat.router)
 app.include_router(advisor.router)
 app.include_router(goals.router)
 app.include_router(goal_planner.router)
+app.include_router(investment.router)
 
 @app.get("/health")
 def health_check():
     """Health check endpoint to verify backend service status."""
     return {"status": "ok"}
-
