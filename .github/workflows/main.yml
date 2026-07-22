@@ -54,7 +54,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20.19.0"
+          cache: "npm"
+          cache-dependency-path: finlume-frontend/package-lock.json
 
       - name: Install Frontend Dependencies
         working-directory: finlume-frontend
@@ -68,7 +70,9 @@ jobs:
 
   docker-compose-test:
     name: Validate Docker Compose Assembly
-    needs: [backend-checks, frontend-checks]
+    needs:
+      - backend-checks
+      - frontend-checks
     runs-on: ubuntu-latest
 
     steps:
