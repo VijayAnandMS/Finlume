@@ -3,7 +3,7 @@ from app.models.models import Goal
 
 @pytest.fixture(scope="module")
 def token_headers(client):
-    client.post("/api/auth/register", json={"username": "goaltester", "password": "password"})
+    client.post("/api/auth/register", json={"username": "goaltester", "password": "password", "email": "goaltester@test.com", "full_name": "Test User"})
     res = client.post("/api/auth/login", data={"username": "goaltester", "password": "password"})
     token = res.json().get("access_token")
     return {"Authorization": f"Bearer {token}"}

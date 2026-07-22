@@ -55,11 +55,9 @@ def test_api_endpoint(client):
     # Register and login to get auth token
     client.post(
         "/api/auth/register",
-        json={"username": "advisortest", "password": "password"}
+        json={"username": "advisortest", "password": "password", "email": "advisortest@test.com", "full_name": "Test User"}
     )
-    login_response = client.post(
-        "/api/auth/login",
-        json={"username": "advisortest", "password": "password"}
+    login_response = client.post("/api/auth/login", data={"username": "advisortest", "password": "password", "email": "advisortest@test.com", "full_name": "Test User"}
     )
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

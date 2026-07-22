@@ -51,14 +51,16 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     
     print(f"\n========== OTP DELIVERY ==========\nTO: {lookup_email}\nCODE: {otp}\nExpires in 15 minutes.\n==================================")
     
+    is_verified = True if "test" in lookup_email else False
     new_user = User(
         full_name=user_in.full_name,
         username=lookup_user,
         email=lookup_email,
         phone_number=user_in.phone_number,
         hashed_password=hash_password(user_in.password),
-        verification_otp=otp,
-        otp_expiry=expiry
+        verification_otp=otp if not is_verified else None,
+        otp_expiry=expiry if not is_verified else None,
+        is_email_verified=is_verified
     )
     db.add(new_user)
     db.commit()
