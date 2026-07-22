@@ -40,6 +40,15 @@ jobs:
         working-directory: finlume-backend
         env:
           PYTHONPATH: ${{ github.workspace }}/finlume-backend
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finlume
+          JWT_SECRET: test-secret
+          JWT_ALGORITHM: HS256
+          GEMINI_MODEL: gemini-2.5-flash
+          GEMINI_API_KEY: dummy-test-key
+          LLM_PROVIDER: anthropic
+          LLM_MODEL: claude-3-5-sonnet
+          ANTHROPIC_API_KEY: dummy-test-key
+          FRONTEND_ORIGIN: http://localhost:5173
         run: |
           pytest tests/ -v
 
