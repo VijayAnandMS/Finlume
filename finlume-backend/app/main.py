@@ -9,7 +9,7 @@ from app.core.logging_config import log_audit_action
 from app.routes import (
     auth, profile, transactions, summary, chat, advisor, 
     goals, goal_planner, investment, monitoring,
-    demo, export
+    demo, export, intelligence
 )
 
 from contextlib import asynccontextmanager
@@ -80,3 +80,4 @@ app.include_router(investment.router)
 app.include_router(monitoring.router)
 app.include_router(demo.router)
 app.include_router(export.router)
+app.include_router(intelligence.router)

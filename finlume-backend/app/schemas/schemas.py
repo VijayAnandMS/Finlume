@@ -58,21 +58,36 @@ class TokenData(BaseModel):
 
 # --- Transaction Schemas ---
 class TransactionCreate(BaseModel):
-    date: str  # YYYY-MM-DD
+    transaction_date: str  # YYYY-MM-DD
+    transaction_type: str  # 'income' or 'expense'
     category: str
-    type: str  # 'income' or 'expense'
+    subcategory: Optional[str] = None
     amount: float
+    currency: Optional[str] = "USD"
+    merchant: Optional[str] = None
+    payment_method: Optional[str] = None
     description: Optional[str] = None
+    notes: Optional[str] = None
+    tags: Optional[str] = None
+    receipt_image: Optional[str] = None
 
 class TransactionOut(BaseModel):
-    id: int
+    id: str
     user_id: int
-    date: str
+    transaction_date: str
+    transaction_type: str
     category: str
-    type: str
+    subcategory: Optional[str]
     amount: float
+    currency: str
+    merchant: Optional[str]
+    payment_method: Optional[str]
     description: Optional[str]
+    notes: Optional[str]
+    tags: Optional[str]
+    receipt_image: Optional[str]
     created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

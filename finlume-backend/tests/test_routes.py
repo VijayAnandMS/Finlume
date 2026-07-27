@@ -38,9 +38,12 @@ def test_auth_routes(client):
 
 
 def test_transaction_routes_and_analytics(client):
+    import uuid
+    dyn_user = f"analyticsuser_{uuid.uuid4().hex[:6]}"
+    # Register structurally isolated user
+    client.post("/api/auth/register", json={"username": dyn_user, "password": "testpassword", "email": f"{dyn_user}@test.com", "full_name": "Test User"})
     # Get auth token
-    login_response = client.post("/api/auth/login", data={"username": "testuser", "password": "testpassword", "email": "testuser@test.com", "full_name": "Test User"}
-    )
+    login_response = client.post("/api/auth/login", data={"username": dyn_user, "password": "testpassword", "email": f"{dyn_user}@test.com", "full_name": "Test User"})
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -49,9 +52,9 @@ def test_transaction_routes_and_analytics(client):
         "/api/transactions/",
         headers=headers,
         json={
-            "date": "2026-07-08",
+            "transaction_date": "2026-07-08",
             "category": "Salary",
-            "type": "income",
+            "transaction_type": "income",
             "amount": 60000.0,
             "description": "Monthly pay"
         }
@@ -63,9 +66,9 @@ def test_transaction_routes_and_analytics(client):
         "/api/transactions/",
         headers=headers,
         json={
-            "date": "2026-07-09",
+            "transaction_date": "2026-07-09",
             "category": "Food",
-            "type": "expense",
+            "transaction_type": "expense",
             "amount": 1200.0,
             "description": "Weekly groceries"
         }
@@ -77,9 +80,9 @@ def test_transaction_routes_and_analytics(client):
         "/api/transactions/",
         headers=headers,
         json={
-            "date": "2026-07-10",
+            "transaction_date": "2026-07-10",
             "category": "Rent",
-            "type": "expense",
+            "transaction_type": "expense",
             "amount": 15000.0,
             "description": "Monthly rent payment"
         }
@@ -97,9 +100,9 @@ def test_transaction_routes_and_analytics(client):
         f"/api/transactions/{tx3_id}",
         headers=headers,
         json={
-            "date": "2026-07-10",
+            "transaction_date": "2026-07-10",
             "category": "Rent",
-            "type": "expense",
+            "transaction_type": "expense",
             "amount": 16000.0,
             "description": "Monthly rent payment updated"
         }

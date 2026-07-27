@@ -24,14 +24,22 @@ interface Goal {
 }
 
 interface Transaction {
-  id: number;
+  id: string;
   user_id: number;
-  date: string;
+  transaction_date: string;
   category: string;
-  type: string;
+  subcategory?: string;
+  transaction_type: string;
   amount: number;
+  currency: string;
+  merchant?: string;
+  payment_method?: string;
   description: string;
+  notes?: string;
+  tags?: string;
+  receipt_image?: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface Summary {
@@ -84,9 +92,9 @@ export const DashboardPage = () => {
   const [showTxModal, setShowTxModal] = useState(false);
   const [editingTxId, setEditingTxId] = useState<number | null>(null);
   const [txForm, setTxForm] = useState({
-    date: new Date().toISOString().split('T')[0],
+    transaction_date: new Date().toISOString().split('T')[0],
     category: 'Food',
-    type: 'expense',
+    transaction_type: 'expense',
     amount: '',
     description: ''
   });
@@ -256,11 +264,11 @@ export const DashboardPage = () => {
   };
 
   const handleOpenEditModal = (tx: Transaction) => {
-    setEditingTxId(tx.id);
+    setEditingTxId(tx.id as any);
     setTxForm({
-      date: tx.date,
+      transaction_date: tx.transaction_date,
       category: tx.category,
-      type: tx.type,
+      transaction_type: tx.transaction_type,
       amount: tx.amount.toString(),
       description: tx.description || ''
     });
@@ -280,9 +288,9 @@ export const DashboardPage = () => {
   const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      date: txForm.date,
+      transaction_date: txForm.transaction_date,
       category: txForm.category,
-      type: txForm.type,
+      transaction_type: txForm.transaction_type,
       amount: parseFloat(txForm.amount) || 0,
       description: txForm.description
     };
@@ -436,15 +444,15 @@ export const DashboardPage = () => {
                   <div key={tx.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-950/60 border border-slate-800/40">
                     <div className="flex items-center space-x-3">
                       <span className="text-lg">
-                        {tx.type === 'income' ? '📥' : '📤'}
+                        {tx.transaction_type === 'income' ? '📥' : '📤'}
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-white">{tx.category}</p>
-                        <p className="text-xxs text-slate-500">{tx.date} {tx.description && `• ${tx.description}`}</p>
+                        <p className="text-xxs text-slate-500">{tx.transaction_date} {tx.merchant && `• ${tx.merchant}`}</p>
                       </div>
                     </div>
-                    <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-slate-300'}`}>
-                      {tx.type === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString('en-IN')}
+                    <span className={`text-sm font-bold ${tx.transaction_type === 'income' ? 'text-emerald-400' : 'text-slate-300'}`}>
+                      {tx.transaction_type === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString('en-IN')}
                     </span>
                   </div>
                 ))
@@ -493,19 +501,19 @@ export const DashboardPage = () => {
               {transactions.length > 0 ? (
                 transactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-950/20 transition-all text-xs">
-                    <td className="py-3 px-4 font-mono text-slate-400">{tx.date}</td>
+                    <td className="py-3 px-4 font-mono text-slate-400">{tx.transaction_date}</td>
                     <td className="py-3 px-4 font-semibold text-white">{tx.category}</td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xxs font-semibold uppercase ${tx.type === 'income'
+                      <span className={`px-2 py-0.5 rounded-full text-xxs font-semibold uppercase ${tx.transaction_type === 'income'
                         ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                         : 'bg-slate-800 border border-slate-700/80 text-slate-400'
                         }`}>
-                        {tx.type}
+                        {tx.transaction_type}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-400 italic max-w-xs truncate">{tx.description || '-'}</td>
-                    <td className={`py-3 px-4 text-right font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-slate-200'}`}>
-                      {tx.type === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    <td className="py-3 px-4 text-slate-400 italic max-w-xs truncate">{tx.merchant || tx.description || '-'}</td>
+                    <td className={`py-3 px-4 text-right font-bold ${tx.transaction_type === 'income' ? 'text-emerald-400' : 'text-slate-200'}`}>
+                      {tx.transaction_type === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex justify-center space-x-2">
@@ -610,7 +618,7 @@ export const DashboardPage = () => {
     // Aggregate actual expense amounts
     const expensesByCategory: Record<string, number> = {};
     transactions.forEach(t => {
-      if (t.type === 'expense') {
+      if (t.transaction_type === 'expense') {
         expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
       }
     });

@@ -57,17 +57,28 @@ class UserProfile(Base):
     # Relationships
     user = relationship("User", back_populates="profile")
 
+import uuid
+
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    date = Column(String, nullable=False)  # ISO Format YYYY-MM-DD
-    category = Column(String, nullable=False)
-    type = Column(String, nullable=False)  # 'income' or 'expense'
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    transaction_date = Column(String, nullable=False, index=True)  # YYYY-MM-DD
+    transaction_type = Column(String(50), nullable=False, index=True)  # 'income' or 'expense'
+    category = Column(String, nullable=False, index=True)
+    subcategory = Column(String, nullable=True)
     amount = Column(Float, nullable=False)
+    currency = Column(String, default="USD")
+    merchant = Column(String, nullable=True, index=True)
+    payment_method = Column(String, nullable=True)
     description = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+    tags = Column(String, nullable=True)
+    receipt_image = Column(String, nullable=True)
+    
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user = relationship("User", back_populates="transactions")

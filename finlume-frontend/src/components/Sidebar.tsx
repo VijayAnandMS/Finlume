@@ -11,6 +11,7 @@ import {
   FileText,
   Settings
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   currentTab?: string;
@@ -32,6 +33,7 @@ const menuItems = [
 ];
 
 export const Sidebar = ({ currentTab = 'Dashboard', onTabChange }: SidebarProps) => {
+  const navigate = useNavigate();
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 text-white min-h-screen p-4 flex flex-col justify-between shadow-lg">
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -50,7 +52,17 @@ export const Sidebar = ({ currentTab = 'Dashboard', onTabChange }: SidebarProps)
             return (
               <button
                 key={item.name}
-                onClick={() => onTabChange && onTabChange(item.name)}
+                onClick={() => {
+                  if (item.name === 'Transactions') {
+                    navigate('/transactions');
+                  } else if (item.name === 'Dashboard') {
+                    navigate('/dashboard');
+                  } else if (item.name === 'Intelligence') {
+                    navigate('/intelligence');
+                  } else if (onTabChange) {
+                    onTabChange(item.name);
+                  }
+                }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-300 group relative overflow-hidden ${isActive
                   ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold shadow-md'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-white'

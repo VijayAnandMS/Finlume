@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/export", tags=["Reports"])
 @router.get("/transactions.csv", summary="Generate CSV Export")
 def export_transactions_csv(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Exports personal transaction logs into a standard CSV blob suitable for Excel manipulation."""
-    txs = db.query(Transaction).filter(Transaction.user_id == current_user.id).order_by(Transaction.date.desc()).all()
+    txs = db.query(Transaction).filter(Transaction.user_id == current_user.id).order_by(Transaction.transaction_date.desc()).all()
     
     output = io.StringIO()
     writer = csv.writer(output, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -21,7 +21,7 @@ def export_transactions_csv(current_user: User = Depends(get_current_user), db: 
     writer.writerow(['ID', 'Type', 'Category', 'Amount', 'Date'])
     
     for t in txs:
-        writer.writerow([t.id, t.type.upper(), t.category, t.amount, t.date])
+        writer.writerow([t.id, t.transaction_type.upper(), t.category, t.amount, t.transaction_date])
         
     output.seek(0)
     

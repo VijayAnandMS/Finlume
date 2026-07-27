@@ -36,7 +36,7 @@ class InvestmentResponse(BaseModel):
 @router.post("/investment", response_model=InvestmentResponse)
 def generate_investment_plan(req: InvestmentRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     txs = db.query(Transaction).filter(Transaction.user_id == current_user.id).all()
-    txs_list = [{"amount": t.amount, "type": t.type, "category": t.category, "date": str(t.date)} for t in txs]
+    txs_list = [{"amount": t.amount, "transaction_type": t.transaction_type, "category": t.category, "transaction_date": str(t.transaction_date)} for t in txs]
     
     summary = compute_local_summary(current_user.id, db)
     

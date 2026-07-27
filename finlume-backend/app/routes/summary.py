@@ -14,13 +14,13 @@ def get_summary(
 ):
     txs = db.query(Transaction).filter(Transaction.user_id == current_user.id).all()
     
-    total_income = sum(t.amount for t in txs if t.type == "income")
-    total_expense = sum(t.amount for t in txs if t.type == "expense")
+    total_income = sum(t.amount for t in txs if t.transaction_type== "income")
+    total_expense = sum(t.amount for t in txs if t.transaction_type== "expense")
     net = total_income - total_expense
     
     by_category = {}
     for t in txs:
-        if t.type == "expense":
+        if t.transaction_type== "expense":
             by_category[t.category] = by_category.get(t.category, 0.0) + t.amount
             
     top_categories = sorted(by_category.items(), key=lambda x: x[1], reverse=True)
@@ -29,7 +29,7 @@ def get_summary(
     ]
     
     # Sort last 10 transactions by date/id descending
-    sorted_txs = sorted(txs, key=lambda x: (x.date, x.id), reverse=True)
+    sorted_txs = sorted(txs, key=lambda x: (x.transaction_date, x.id), reverse=True)
     
     return SummaryOut(
         total_income=total_income,

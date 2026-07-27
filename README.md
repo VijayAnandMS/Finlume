@@ -31,8 +31,15 @@ graph TD
 
 ## Folder Structure
 - `finlume-backend/`: Containerized FastAPI REST backend encompassing intelligent routing, ORM schemas, and AI agent prompt pipelines.
-- `finlume-frontend/`: Vite-powered React UI utilizing responsive elements, standard dashboard mappings, and Recharts.
-- `chroma_data/`: Persistent vector store database configurations (Ignored via `.gitignore`).
+-### 2. Full-Stack Data Visualization
+- **React + Tailwind + Vite**: Beautiful, fully responsive UI component structures driven by native Framer Motion animations.
+- **Recharts Metrics**: Extensible interactive charts updating reactively when manipulating core transactions.
+
+### 3. Financial Intelligence Platform (Phase 15 Expansion)
+- **Heuristic Health Engine**: Calculates structural trajectory scores bridging savings velocity out of baseline runways.
+- **Probabilistic Forecasting**: Evaluates geometric burn limits parsing variance over historic spans.
+- **AI Smart Recommendations**: Drives organic prescriptive intelligence extracting anomalous sub-spending (e.g. duplicate subscriptions, trailing subscriptions, structural spending).
+- **Core Intelligence Dashboard**: Comprehensive UI matrix visualizing probability algorithms securely via JWT isolation natively integrated as Tool Nodes to the AI Orchestrator string array. (Ignored via `.gitignore`).
 - `docker-compose.yml`: Top-level multi-container topology configurations.
 
 ## Quick Start (Docker)

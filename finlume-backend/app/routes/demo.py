@@ -29,7 +29,7 @@ def populate_demo_data(current_user: User = Depends(get_current_user), db: Sessi
     
     # Salary injects
     for i in range(3):
-        txs.append(Transaction(user_id=current_user.id, amount=120000, type="income", category="Salary", date=today - datetime.timedelta(days=i*30)))
+        txs.append(Transaction(user_id=current_user.id, amount=120000, transaction_type="income", category="Salary", transaction_date=today - datetime.timedelta(days=i*30)))
         
     # High frequency expenses
     expenses = [
@@ -40,7 +40,7 @@ def populate_demo_data(current_user: User = Depends(get_current_user), db: Sessi
     for i in range(60):
         amount, category = expenses[i % len(expenses)]
         offset = today - datetime.timedelta(days=i)
-        txs.append(Transaction(user_id=current_user.id, amount=amount, type="expense", category=category, date=offset))
+        txs.append(Transaction(user_id=current_user.id, amount=amount, transaction_type="expense", category=category, transaction_date=offset))
     
     db.add_all(txs)
     db.commit()

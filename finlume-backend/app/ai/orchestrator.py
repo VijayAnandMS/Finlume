@@ -121,6 +121,16 @@ MEMORY_TOOL_SCHEMA = {
     }
 }
 
+INTELLIGENCE_TOOL_SCHEMA = {
+    "name": "intelligence_agent",
+    "description": "Call this to get comprehensive financial intelligence including mathematical health scores (0-100), overspending risk levels (LOW/HIGH), precise dynamic budget recommendations, and predictive spending insight categorizations.",
+    "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
+
 from app.ai.llm_client import call_llm_with_tools
 import json
 import hashlib
@@ -136,7 +146,7 @@ def call_orchestrator(user_id: int, user_message: str, summary_data: Dict[str, A
 
     messages = [{"role": "user", "content": user_message}]
     
-    TOOLS = [EXPENSE_TOOL_SCHEMA, BUDGET_TOOL_SCHEMA, ADVISOR_TOOL_SCHEMA, GOAL_PLANNER_TOOL_SCHEMA, INVESTMENT_TOOL_SCHEMA, FORECAST_TOOL_SCHEMA, ANOMALY_TOOL_SCHEMA, SIMULATION_TOOL_SCHEMA, MEMORY_TOOL_SCHEMA]
+    TOOLS = [EXPENSE_TOOL_SCHEMA, BUDGET_TOOL_SCHEMA, ADVISOR_TOOL_SCHEMA, GOAL_PLANNER_TOOL_SCHEMA, INVESTMENT_TOOL_SCHEMA, FORECAST_TOOL_SCHEMA, ANOMALY_TOOL_SCHEMA, SIMULATION_TOOL_SCHEMA, MEMORY_TOOL_SCHEMA, INTELLIGENCE_TOOL_SCHEMA]
     
     SYSTEM_PROMPT = """You are the central Orchestrator Agent for Finlume AI.
 Your job is to read the user's message, understand what they need, and call the appropriate agent/tools to get the data.
@@ -150,6 +160,7 @@ You have the following tools:
 - anomaly_agent
 - simulation_agent
 - memory_service
+- intelligence_agent
 
 If the investment_agent tool is called, you MUST output ONLY the EXACT JSON string returned by the tool as your final reply. Do not add any other conversational text or markdown around it.
 
@@ -265,6 +276,27 @@ If multiple tools are needed, you can call them. But you must answer the user's 
                 q = args.get("query", "Summarize history")
                 results = memory_service.query_memory(q)
                 result_str = json.dumps([{"id": r.id, "text": r.text, "meta": r.metadata} for r in results])
+            elif tool_name == "intelligence_agent":
+                from app.services.health_engine import calculate_financial_health
+                from app.services.forecast_engine import predict_balances
+                from app.services.risk_engine import analyze_risk
+                from app.services.insight_engine import generate_insights
+                from app.services.recommendation_engine import generate_recommendations
+                
+                # Fetch profile from DB dynamically or skip explicitly mapping for lightweight chat flow
+                # For basic agent use, we will pass None for goals/profile to rely purely on transaction heuristics
+                inc = summary_data.get("total_income", 0.0)
+                exp = summary_data.get("total_expense", 0.0)
+                bal = inc - exp
+                
+                agg = {
+                    "health": calculate_financial_health(transactions, [], None),
+                    "forecast": predict_balances(transactions, bal),
+                    "risk": analyze_risk(transactions, None),
+                    "insights": generate_insights(transactions),
+                    "recommendations": generate_recommendations(transactions, None)
+                }
+                result_str = json.dumps(agg)
             else:
                 result_str = f"Error: Unknown tool {tool_name}"
                 

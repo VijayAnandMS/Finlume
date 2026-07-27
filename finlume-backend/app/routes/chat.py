@@ -11,13 +11,13 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 def compute_local_summary(user_id: int, db: Session):
     txs = db.query(Transaction).filter(Transaction.user_id == user_id).all()
-    total_income = sum(t.amount for t in txs if t.type == "income")
-    total_expense = sum(t.amount for t in txs if t.type == "expense")
+    total_income = sum(t.amount for t in txs if t.transaction_type== "income")
+    total_expense = sum(t.amount for t in txs if t.transaction_type== "expense")
     net = total_income - total_expense
     
     by_category = {}
     for t in txs:
-        if t.type == "expense":
+        if t.transaction_type== "expense":
             by_category[t.category] = by_category.get(t.category, 0.0) + t.amount
             
     top_categories = sorted(by_category.items(), key=lambda x: x[1], reverse=True)
@@ -42,7 +42,7 @@ def chat_with_coach(
     # Fetch raw transactions to pass to the orchestrator agents
     txs = db.query(Transaction).filter(Transaction.user_id == current_user.id).all()
     txs_list = [
-        {"amount": t.amount, "type": t.type, "category": t.category, "description": t.description}
+        {"amount": t.amount, "transaction_type": t.transaction_type, "category": t.category, "description": t.description}
         for t in txs
     ]
     
