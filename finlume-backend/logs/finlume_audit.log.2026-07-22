@@ -1,8 +1,0 @@
-{"timestamp": 1784726539.3985362, "level": null, "name": "finlume_audit", "user_id": "system", "action": "Called endpoint: /api/agents/investment", "status": "Success", "execution_time_ms": 7.489204406738281}
-{"timestamp": 1784727527.153475, "level": null, "name": "finlume_audit", "user_id": "system", "action": "Called endpoint: /api/agents/investment", "status": "Success", "execution_time_ms": 5603.47843170166}
-{"timestamp": 1784727572.7515855, "level": null, "name": "finlume_audit", "user_id": "system", "action": "Called endpoint: /api/agents/advisor", "status": "Success", "execution_time_ms": 31.961917877197266}
-{"timestamp": 1784727599.368917, "level": null, "name": "finlume_audit", "user_id": "system", "action": "Called endpoint: /api/agents/investment", "status": "Success", "execution_time_ms": 3276.214361190796}
-{"timestamp": 1784727652.9296036, "level": null, "name": "finlume_audit", "user_id": "system", "action": "Called endpoint: /api/agents/advisor", "status": "Success", "execution_time_ms": 22.50838279724121}
-{"timestamp": 1784727666.5016527, "level": null, "name": "finlume_audit", "user_id": "system", "action": "Called endpoint: /api/agents/investment", "status": "Success", "execution_time_ms": 4571.079969406128}
-{"timestamp": 1784727762.8313088, "level": null, "name": "finlume_audit", "user_id": "system", "action": "Called endpoint: /api/agents/advisor", "status": "Success", "execution_time_ms": 19.22154426574707}
-{"timestamp": 1784727774.1838136, "level": null, "name": "finlume_audit", "user_id": "system", "action": "Called endpoint: /api/agents/investment", "status": "Success", "execution_time_ms": 3997.372627258301}

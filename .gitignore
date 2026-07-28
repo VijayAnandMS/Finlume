@@ -1,0 +1,10 @@
+
+# Temporary Runtime Artifacts
+*.tmp
+*_out.txt
+temp*.txt
+debug*.txt
+build_out.txt
+err*.txt
+*output_clean.txt
+*.log
