@@ -9,6 +9,9 @@ const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage').t
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const TransactionsPage = React.lazy(() => import('./pages/TransactionsPage').then(m => ({ default: m.TransactionsPage })));
 const IntelligenceDashboard = React.lazy(() => import('./pages/IntelligenceDashboard').then(m => ({ default: m.default })));
+const ImportWorkflowPage = React.lazy(() => import('./pages/ImportWorkflowPage').then(m => ({ default: m.ImportWorkflowPage })));
+const ImportHistoryPage = React.lazy(() => import('./pages/ImportHistoryPage').then(m => ({ default: m.ImportHistoryPage })));
+const ImportDetailsPage = React.lazy(() => import('./pages/ImportDetailsPage').then(m => ({ default: m.ImportDetailsPage })));
 
 function App() {
   return (
@@ -23,6 +26,9 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/intelligence" element={<IntelligenceDashboard />} />
+          <Route path="/import/preview/:sessionId" element={<ImportWorkflowPage />} />
+          <Route path="/import/history" element={<ImportHistoryPage />} />
+          <Route path="/import/history/:sessionId" element={<ImportDetailsPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>

@@ -1,0 +1,5 @@
+class ConfidenceConfig:
+    HIGH_THRESHOLD = 0.90
+    MEDIUM_THRESHOLD = 0.60
+    LOW_THRESHOLD = 0.40
+    AI_CONFIDENCE_DEFAULT = 0.85

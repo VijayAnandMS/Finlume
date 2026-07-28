@@ -100,3 +100,50 @@ class Goal(Base):
 
     # Relationships
     user = relationship("User", back_populates="goals")
+
+class ImportSession(Base):
+    __tablename__ = "import_sessions"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    filename = Column(String, nullable=False)
+    status = Column(String, default="PENDING")
+    total_records = Column(Integer, default=0)
+    duplicates_found = Column(Integer, default=0)
+    duration_ms = Column(Integer, default=0)
+    imported_count = Column(Integer, default=0)
+    skipped_count = Column(Integer, default=0)
+    errors = Column(String, default="[]")
+    warnings = Column(String, default="[]")
+    version = Column(String, default="1.0")
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User")
+    records = relationship("ImportRecord", back_populates="session", cascade="all, delete-orphan")
+
+class ImportRecord(Base):
+    __tablename__ = "import_records"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    session_id = Column(String(36), ForeignKey("import_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    raw_data = Column(String, nullable=False)
+    parsed_amount = Column(Float, nullable=True)
+    parsed_date = Column(String, nullable=True)
+    parsed_merchant = Column(String, nullable=True)
+    ai_category_suggestion = Column(String, nullable=True)
+    is_duplicate = Column(Boolean, default=False)
+    status = Column(String, default="STAGED")
+    
+    session = relationship("ImportSession", back_populates="records")
+
+
+class ImportAuditLog(Base):
+    __tablename__ = "import_audit_logs"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    session_id = Column(String(36), ForeignKey("import_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    action = Column(String(100), nullable=False)
+    resource = Column(String(100), nullable=True)
+    details = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    session = relationship("ImportSession")

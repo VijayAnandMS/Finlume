@@ -135,3 +135,41 @@ class ChatMessage(BaseModel):
 class ChatReply(BaseModel):
     reply: str
     agents_used: List[str] = []
+
+# --- Import Schemas (Phase 16) ---
+class ImportRecordOut(BaseModel):
+    id: str
+    session_id: str
+    raw_data: str
+    parsed_amount: Optional[float] = None
+    parsed_date: Optional[str] = None
+    parsed_merchant: Optional[str] = None
+    ai_category_suggestion: Optional[str] = None
+    is_duplicate: bool
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ImportSessionOut(BaseModel):
+    id: str
+    filename: str
+    status: str
+    total_records: int
+    duplicates_found: int
+    created_at: datetime
+    records: List[ImportRecordOut] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ImportAuditLogOut(BaseModel):
+    id: str
+    session_id: str
+    user_id: int
+    action: str
+    resource: Optional[str] = None
+    details: Optional[str] = None
+    timestamp: datetime
+    class Config:
+        orm_mode = True
+
