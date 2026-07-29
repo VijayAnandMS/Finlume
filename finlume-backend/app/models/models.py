@@ -147,3 +147,53 @@ class ImportAuditLog(Base):
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     session = relationship("ImportSession")
+
+class ReceiptSession(Base):
+    __tablename__ = "receipt_sessions"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    filename = Column(String, nullable=False)
+    storage_url = Column(String, nullable=False)
+    status = Column(String, default="UPLOADED") # UPLOADED, OCR_PROCESSING, COMPLETED, FAILED
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class OCRResult(Base):
+    __tablename__ = "ocr_results"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    receipt_session_id = Column(String(36), ForeignKey("receipt_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    raw_text = Column(String, nullable=True)
+    confidence_score = Column(Float, default=0.0)
+    detected_fields = Column(String, nullable=True) # JSON
+    bounding_regions = Column(String, nullable=True) # JSON
+    processing_time_ms = Column(Integer, default=0)
+    warnings = Column(String, default="[]") # JSON
+    errors = Column(String, default="[]") # JSON
+    
+    session = relationship("ReceiptSession")
+
+class ParsedReceipt(Base):
+    __tablename__ = "parsed_receipts"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    receipt_session_id = Column(String(36), ForeignKey("receipt_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    merchant_name = Column(String, nullable=True)
+    transaction_date = Column(String, nullable=True)
+    subtotal = Column(Float, default=0.0)
+    tax = Column(Float, default=0.0)
+    total = Column(Float, default=0.0)
+    currency = Column(String, default="USD")
+    warnings = Column(String, default="[]") # JSON
+    
+    session = relationship("ReceiptSession")
+
+class ReceiptIntelligence(Base):
+    __tablename__ = "receipt_intelligence"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    receipt_session_id = Column(String(36), ForeignKey("receipt_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    predicted_category = Column(String, default="Uncategorized")
+    field_corrections = Column(String, default="{}") # JSON
+    overall_confidence = Column(Float, default=0.0)
+    requires_manual_review = Column(Boolean, default=True)
+    uncertainty_reasons = Column(String, default="[]") # JSON
+    
+    session = relationship("ReceiptSession")

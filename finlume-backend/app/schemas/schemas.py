@@ -173,3 +173,43 @@ class ImportAuditLogOut(BaseModel):
     class Config:
         orm_mode = True
 
+class OCRResultOut(BaseModel):
+    id: str
+    receipt_session_id: str
+    raw_text: str
+    confidence_score: float
+    detected_fields: str
+    bounding_regions: str
+    processing_time_ms: int
+    warnings: str
+    errors: str
+
+    class Config:
+        orm_mode = True
+
+class ParsedReceiptOut(BaseModel):
+    id: str
+    receipt_session_id: str
+    merchant_name: Optional[str] = None
+    transaction_date: Optional[str] = None
+    subtotal: float
+    tax: float
+    total: float
+    currency: str
+    warnings: str
+
+    class Config:
+        orm_mode = True
+
+class ReceiptIntelligenceOut(BaseModel):
+    id: str
+    receipt_session_id: str
+    predicted_category: str
+    field_corrections: str
+    overall_confidence: float
+    requires_manual_review: bool
+    uncertainty_reasons: str
+
+    class Config:
+        orm_mode = True
+
