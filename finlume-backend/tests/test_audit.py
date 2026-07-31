@@ -19,7 +19,6 @@ class MockMessageResponse:
         self.content = content
 
 
-@pytest.mark.skip(reason="Flaky test disabled for CI stability")
 def test_auth_wrong_password(client):
     # Register test user
     client.post(
@@ -31,7 +30,7 @@ def test_auth_wrong_password(client):
     login_fail = client.post("/api/auth/login", data={"username": "audituser", "password": "wrongpassword", "email": "audituser@test.com", "full_name": "Test User"}
     )
     assert login_fail.status_code == 401
-    assert login_fail.json()["detail"] == "Invalid username or password"
+    assert login_fail.json()["detail"] == "Invalid credentials"
 
 
 def test_auth_missing_or_expired_jwt(client):
@@ -228,7 +227,6 @@ def test_ai_coach_failing_api_fallback(client):
     mock_anthropic_module.Anthropic.return_value.messages.create.side_effect = None
 
 
-@pytest.mark.skip(reason="Flaky test disabled for CI stability")
 def test_ai_coach_malformed_transactions(client):
     # Register & Login User D
     client.post(

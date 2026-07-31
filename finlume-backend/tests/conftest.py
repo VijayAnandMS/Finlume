@@ -1,3 +1,6 @@
+import os
+os.environ["DATABASE_URL"] = "sqlite:///./finlume_test.db"
+os.environ["TEST_DATABASE_URL"] = "sqlite:///./finlume_test.db"
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

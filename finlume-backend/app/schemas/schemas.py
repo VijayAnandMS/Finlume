@@ -170,8 +170,7 @@ class ImportAuditLogOut(BaseModel):
     resource: Optional[str] = None
     details: Optional[str] = None
     timestamp: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class OCRResultOut(BaseModel):
     id: str
@@ -184,8 +183,7 @@ class OCRResultOut(BaseModel):
     warnings: str
     errors: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ParsedReceiptOut(BaseModel):
     id: str
@@ -198,8 +196,7 @@ class ParsedReceiptOut(BaseModel):
     currency: str
     warnings: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReceiptIntelligenceOut(BaseModel):
     id: str
@@ -210,6 +207,34 @@ class ReceiptIntelligenceOut(BaseModel):
     requires_manual_review: bool
     uncertainty_reasons: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
+
+class PreviewReceiptOut(BaseModel):
+    id: str
+    receipt_session_id: str
+    ocr_raw_data: str
+    parsed_data: str
+    ai_suggestions: str
+    confidence_score: float
+    requires_manual_review: bool
+    warnings: str
+    review_flags: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ReceiptAuditOut(BaseModel):
+    id: str
+    receipt_session_id: str
+    user_id: int
+    upload_timestamp: Optional[str] = None
+    ocr_timestamp: Optional[str] = None
+    parsing_timestamp: Optional[str] = None
+    ai_timestamp: Optional[str] = None
+    processing_status: str
+    confidence_summary: float
+    validation_warnings: str
+    manual_review_flags: str
+    error_summary: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 

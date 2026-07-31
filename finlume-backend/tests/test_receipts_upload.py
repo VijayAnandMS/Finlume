@@ -27,6 +27,7 @@ def setup_db():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    engine.dispose()
     import os
     if os.path.exists("test_receipts.db"):
         os.remove("test_receipts.db")
@@ -40,7 +41,7 @@ def auth_headers():
         "email": f"{unique_user}@test.com",
         "password": "password123"
     })
-    token_res = client.post("/api/auth/token", data={
+    token_res = client.post("/api/auth/login", data={
         "username": unique_user,
         "password": "password123"
     })
@@ -88,7 +89,7 @@ def test_cross_tenant_isolation(auth_headers):
         "full_name": "Test User", "username": unique_user,
         "email": f"{unique_user}@test.com", "password": "password123"
     })
-    token_res = client.post("/api/auth/token", data={"username": unique_user, "password": "password123"})
+    token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
     auth2 = {"Authorization": f"Bearer {token_res.json()['access_token']}"}
     
     # Try fetching with user 2

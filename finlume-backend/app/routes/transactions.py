@@ -147,7 +147,7 @@ def update_transaction(
     db.refresh(tx)
     return tx
 
-@router.delete("/{tx_id}")
+@router.delete("/{tx_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(
     tx_id: str, 
     db: Session = Depends(get_db), 

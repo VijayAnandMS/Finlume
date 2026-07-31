@@ -197,3 +197,38 @@ class ReceiptIntelligence(Base):
     uncertainty_reasons = Column(String, default="[]") # JSON
     
     session = relationship("ReceiptSession")
+
+class PreviewReceipt(Base):
+    __tablename__ = "preview_receipts"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    receipt_session_id = Column(String(36), ForeignKey("receipt_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    ocr_raw_data = Column(String, default="{}") # JSON
+    parsed_data = Column(String, default="{}") # JSON
+    ai_suggestions = Column(String, default="{}") # JSON
+    
+    confidence_score = Column(Float, default=0.0)
+    requires_manual_review = Column(Boolean, default=True)
+    warnings = Column(String, default="[]") # JSON
+    review_flags = Column(String, default="[]") # JSON
+    
+    session = relationship("ReceiptSession")
+
+class ReceiptAudit(Base):
+    __tablename__ = "receipt_audits"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    receipt_session_id = Column(String(36), ForeignKey("receipt_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, index=True)
+    
+    upload_timestamp = Column(String, nullable=True) # ISO format
+    ocr_timestamp = Column(String, nullable=True)
+    parsing_timestamp = Column(String, nullable=True)
+    ai_timestamp = Column(String, nullable=True)
+    
+    processing_status = Column(String, default="PENDING") # PENDING, PREVIEW_READY, IMPORTED, FAILED
+    confidence_summary = Column(Float, default=0.0)
+    validation_warnings = Column(String, default="[]") # JSON
+    manual_review_flags = Column(String, default="[]") # JSON
+    error_summary = Column(String, nullable=True)
+    
+    session = relationship("ReceiptSession")

@@ -130,7 +130,6 @@ def test_transaction_routes_and_analytics(client):
     assert new_summary["total_expense"] == 16000.0  # Food deleted, only rent remains
 
 
-@pytest.mark.skip(reason="Flaky test disabled for CI stability")
 def test_ai_chat_coach(client):
     # Get auth token
     login_response = client.post("/api/auth/login", data={"username": "testuser", "password": "testpassword", "email": "testuser@test.com", "full_name": "Test User"}

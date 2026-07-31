@@ -26,6 +26,7 @@ def setup_db():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    engine.dispose()
     import os
     if os.path.exists("test_import_workflow.db"):
         os.remove("test_import_workflow.db")
@@ -39,7 +40,7 @@ def auth_headers():
         "email": f"{unique_user}@test.com",
         "password": "password123"
     })
-    token_res = client.post("/api/auth/token", data={
+    token_res = client.post("/api/auth/login", data={
         "username": unique_user,
         "password": "password123"
     })

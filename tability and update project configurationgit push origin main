@@ -1,0 +1,139 @@
+warning: in the working copy of 'finlume-backend/app/database.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'finlume-backend/pytest.ini', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'finlume-frontend/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/finlume-backend/app/database.py b/finlume-backend/app/database.py[m
+[1mindex 7a6203a..fe2b5b6 100644[m
+[1m--- a/finlume-backend/app/database.py[m
+[1m+++ b/finlume-backend/app/database.py[m
+[36m@@ -1,5 +1,5 @@[m
+ from sqlalchemy import create_engine[m
+[31m-from sqlalchemy.ext.declarative import declarative_base[m
+[32m+[m[32mfrom sqlalchemy.orm import declarative_base[m
+ from sqlalchemy.orm import sessionmaker[m
+ from app.core.config import settings[m
+ [m
+[1mdiff --git a/finlume-backend/app/models/models.py b/finlume-backend/app/models/models.py[m
+[1mindex 7b15b0b..c66738b 100644[m
+[1m--- a/finlume-backend/app/models/models.py[m
+[1m+++ b/finlume-backend/app/models/models.py[m
+[36m@@ -197,3 +197,38 @@[m [mclass ReceiptIntelligence(Base):[m
+     uncertainty_reasons = Column(String, default="[]") # JSON[m
+     [m
+     session = relationship("ReceiptSession")[m
+[32m+[m
+[32m+[m[32mclass PreviewReceipt(Base):[m
+[32m+[m[32m    __tablename__ = "preview_receipts"[m
+[32m+[m[32m    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)[m
+[32m+[m[32m    receipt_session_id = Column(String(36), ForeignKey("receipt_sessions.id", ondelete="CASCADE"), nullable=False, index=True)[m
+[32m+[m[41m    [m
+[32m+[m[32m    ocr_raw_data = Column(String, default="{}") # JSON[m
+[32m+[m[32m    parsed_data = Column(String, default="{}") # JSON[m
+[32m+[m[32m    ai_suggestions = Column(String, default="{}") # JSON[m
+[32m+[m[41m    [m
+[32m+[m[32m    confidence_score = Column(Float, default=0.0)[m
+[32m+[m[32m    requires_manual_review = Column(Boolean, default=True)[m
+[32m+[m[32m    warnings = Column(String, default="[]") # JSON[m
+[32m+[m[32m    review_flags = Column(String, default="[]") # JSON[m
+[32m+[m[41m    [m
+[32m+[m[32m    session = relationship("ReceiptSession")[m
+[32m+[m
+[32m+[m[32mclass ReceiptAudit(Base):[m
+[32m+[m[32m    __tablename__ = "receipt_audits"[m
+[32m+[m[32m    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)[m
+[32m+[m[32m    receipt_session_id = Column(String(36), ForeignKey("receipt_sessions.id", ondelete="CASCADE"), nullable=False, index=True)[m
+[32m+[m[32m    user_id = Column(Integer, index=True)[m
+[32m+[m[41m    [m
+[32m+[m[32m    upload_timestamp = Column(String, nullable=True) # ISO format[m
+[32m+[m[32m    ocr_timestamp = Column(String, nullable=True)[m
+[32m+[m[32m    parsing_timestamp = Column(String, nullable=True)[m
+[32m+[m[32m    ai_timestamp = Column(String, nullable=True)[m
+[32m+[m[41m    [m
+[32m+[m[32m    processing_status = Column(String, default="PENDING") # PENDING, PREVIEW_READY, IMPORTED, FAILED[m
+[32m+[m[32m    confidence_summary = Column(Float, default=0.0)[m
+[32m+[m[32m    validation_warnings = Column(String, default="[]") # JSON[m
+[32m+[m[32m    manual_review_flags = Column(String, default="[]") # JSON[m
+[32m+[m[32m    error_summary = Column(String, nullable=True)[m
+[32m+[m[41m    [m
+[32m+[m[32m    session = relationship("ReceiptSession")[m
+[1mdiff --git a/finlume-backend/app/routes/receipts.py b/finlume-backend/app/routes/receipts.py[m
+[1mindex afceffb..189a383 100644[m
+[1m--- a/finlume-backend/app/routes/receipts.py[m
+[1m+++ b/finlume-backend/app/routes/receipts.py[m
+[36m@@ -3,13 +3,14 @@[m [mimport json[m
+ import logging[m
+ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, BackgroundTasks[m
+ from sqlalchemy.orm import Session[m
+[31m-from pydantic import BaseModel[m
+[31m-from typing import Optional[m
+[32m+[m[32mfrom pydantic import BaseModel, ConfigDict[m
+[32m+[m[32mfrom typing import Optional, List[m
+[32m+[m[32mfrom datetime import datetime[m
+ [m
+ from app.database import get_db[m
+[31m-from app.models.models import User, ReceiptSession, OCRResult, ParsedReceipt, ReceiptIntelligence[m
+[32m+[m[32mfrom app.models.models import User, ReceiptSession, OCRResult, ParsedReceipt, ReceiptIntelligence, PreviewReceipt, ReceiptAudit[m
+ from app.routes.auth import get_current_user[m
+[31m-from app.schemas.schemas import OCRResultOut, ParsedReceiptOut, ReceiptIntelligenceOut[m
+[32m+[m[32mfrom app.schemas.schemas import OCRResultOut, ParsedReceiptOut, ReceiptIntelligenceOut, PreviewReceiptOut, ReceiptAuditOut[m
+ from app.services.receipts.upload_service import ReceiptUploadService[m
+ from app.services.receipts.providers.azure_provider import AzureOCRProvider[m
+ from app.services.receipts.parser.parser import ReceiptParser[m
+[36m@@ -29,8 +30,7 @@[m [mclass ReceiptSessionOut(BaseModel):[m
+     storage_url: str[m
+     status: str[m
+     [m
+[31m-    class Config:[m
+[31m-        orm_mode = True[m
+[32m+[m[32m    model_config = ConfigDict(from_attributes=True)[m
+ [m
+ @router.post("/upload", response_model=UploadReceiptResponse)[m
+ async def upload_receipt([m
+[36m@@ -290,3 +290,168 @@[m [mdef get_receipt_intelligence([m
+     ri = db.query(ReceiptIntelligence).filter(ReceiptIntelligence.receipt_session_id == rs.id).order_by(ReceiptIntelligence.id.desc()).first()[m
+     if not ri: raise HTTPException(status_code=404, detail="No intelligence bounds processed natively")[m
+     return ri[m
+[32m+[m
+[32m+[m[32m# --- END-TO-END WORKFLOW INTEGRATION (PHASE 17.5) ---[m
+[32m+[m
+[32m+[m[32m@router.post("/{receipt_session_id}/process", response_model=PreviewReceiptOut)[m
+[32m+[m[32mdef end_to_end_receipt_process([m
+[32m+[m[32m    receipt_session_id: str,[m
+[32m+[m[32m    db: Session = Depends(get_db),[m
+[32m+[m[32m    current_user: User = Depends(get_current_user)[m
+[32m+[m[32m):[m
+[32m+[m[32m    """[m
+[32m+[m[32m    Executes OCR, Parser, and AI Intelligence into a single Preview Object sequentially.[m
+[32m+[m[32m    """[m
+[32m+[m[32m    # 1. Resolve Session[m
+[32m+[m[32m    rs = db.query(ReceiptSession).filter([m
+[32m+[m[32m        ReceiptSession.id == receipt_session_id,[m[41m [m
+[32m+[m[32m        ReceiptSession.user_id == current_user.id[m
+[32m+[m[32m    ).first()[m
+[32m+[m[32m    if not rs: raise HTTPException(status_code=404, detail="Receipt Session not found")[m
+[32m+[m
+[32m+[m[32m    # 2. Check OCR / Run OCR (Assumption: Azure Mock handles filepath mapping gracefully)[m
+[32m+[m[32m    ocr = db.query(OCRResult).filter(OCRResult.receipt_session_id == rs.id).order_by(OCRResult.id.desc()).first()[m
+[32m+[m[32m    if not ocr:[m
+[32m+[m[32m        # Implicitly fire OCR sequentially if tracking natively missing bounding limits[m
+[32m+[m[32m        impl_ocr = AzureOCRProvider().extract_receipt(rs.storage_url)[m
+[32m+[m[32m        ocr = OCRResult([m
+[32m+[m[32m            receipt_session_id=rs.id,[m
+[32m+[m[32m            raw_response=json.dumps(impl_ocr),[m
+[32m+[m[32m            detected_fields=json.dumps(impl_ocr.get("fields", {})),[m
+[32m+[m[32m            confidence_score=impl_ocr.get("confidence", 0.0),[m
+[32m+[m[32m            processing_time_ms=impl_ocr.get("processing_time_ms", 0),[m
+[32m+[m[32m            warnings=json.dumps([]),[m
+[32m+[m[32m            errors=json.dumps([])[m
+[32m+[m[32m        )[m
+[32m+[m[32m        db.add(ocr)[m
+[32m+[m[32m        db.commit()[m
+[32m+[m[32m        db.refresh(ocr)[m
+[32m+[m[41m        [m
+[32m+[m[32m    detected = json.loads(ocr.detected_fields)[m
+[32m+[m
+[32m+[m[32m    # 3. Parsed Output Mapping[m
+[32m+[m[32m    parsed_dict = ReceiptParser.parse_ocr_result(detected)[m
+[32m+[m[32m    pr = ParsedReceipt([m
+[32m+[m[32m        receipt_session_id=rs.id,[m
+[32m+[m[32m        merchant_name=parsed_dict.get("merchant_name"),[m
+[32m+[m[32m       

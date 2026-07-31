@@ -29,6 +29,7 @@ def setup_db():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    engine.dispose()
     import os
     if os.path.exists("test_parser_bounds.db"):
         os.remove("test_parser_bounds.db")
@@ -37,7 +38,7 @@ def setup_db():
 def auth_headers():
     unique_user = f"user_{uuid.uuid4().hex[:8]}"
     client.post("/api/auth/register", json={"username": unique_user, "password": "password123"})
-    token_res = client.post("/api/auth/token", data={"username": unique_user, "password": "password123"})
+    token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
     return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
 
 def test_parser_normalizations(auth_headers):
