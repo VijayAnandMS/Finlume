@@ -3,6 +3,7 @@ os.environ["DATABASE_URL"] = "sqlite:///./finlume_test.db"
 os.environ["TEST_DATABASE_URL"] = "sqlite:///./finlume_test.db"
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from app.main import app as fastapi_app
@@ -19,13 +20,13 @@ TEST_DATABASE_URL = os.environ.get(
 )
 
 try:
-    engine = create_engine(TEST_DATABASE_URL)
+    engine = create_engine(TEST_DATABASE_URL, poolclass=NullPool)
     with engine.connect() as conn:
         pass
     print("conftest: Connected to PostgreSQL test DB.")
 except Exception:
     TEST_DATABASE_URL = "sqlite:///./finlume_test.db"
-    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
     print("conftest: PostgreSQL unreachable. Falling back to SQLite.")
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
