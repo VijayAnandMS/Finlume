@@ -1,0 +1,20 @@
+{
+  "register_status": 201,
+  "register_data": {
+    "id": 137,
+    "full_name": "Test",
+    "username": "testuser99",
+    "email": "test_testuser99@test.com",
+    "phone_number": null,
+    "is_email_verified": true,
+    "profile_completed": false,
+    "created_at": "2026-08-01T13:26:36.321241"
+  },
+  "login_status": 200,
+  "login_data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODU1OTQzOTYsInN1YiI6InRlc3R1c2VyOTkifQ.-1gvAwLQLa4iolUKCkkjuY-GaspeRUYx_6hj5-WtDrY",
+    "token_type": "bearer",
+    "expiration": 3600,
+    "profile_completed": false
+  }
+}

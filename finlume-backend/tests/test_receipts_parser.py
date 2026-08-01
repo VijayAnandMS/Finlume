@@ -11,7 +11,8 @@ from sqlalchemy.orm import sessionmaker
 from app.models.models import ReceiptSession, OCRResult
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_parser_bounds.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+from sqlalchemy.pool import NullPool
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def override_get_db():
@@ -35,9 +36,10 @@ def setup_db():
         os.remove("test_parser_bounds.db")
 
 @pytest.fixture
+@pytest.fixture
 def auth_headers():
     unique_user = f"user_{uuid.uuid4().hex[:8]}"
-    client.post("/api/auth/register", json={"username": unique_user, "password": "password123"})
+    client.post("/api/auth/register", json={"full_name": "Test", "username": unique_user, "email": f"test_{unique_user}@test.com", "password": "password123"})
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
     return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
 
