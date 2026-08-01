@@ -38,8 +38,7 @@ def auth_headers():
     unique_user = f"user_{uuid.uuid4().hex[:8]}"
     client.post("/api/auth/register", json={"full_name": "Test", "username": unique_user, "email": f"test_{unique_user}@test.com", "password": "password123"})
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
-    return {"Authorization": f"Bearer {token_res.json()['access_token']}"}"}
-
+    return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
 def test_workflow_lifecycle(auth_headers):
     # 1. Upload Mock File
     csv_content = b"Date,Amount,Merchant\n2026-07-28,10.00,Test\n2026-07-28,20.00,Test2\n"
@@ -61,7 +60,7 @@ def test_workflow_lifecycle(auth_headers):
     
     patch_payload = {
         "updates": {
-            rec_id_1: {"status": "DISCARDED", "category": "Food"},
+            rec_id_1: {"status": "DISCARDED", "category": "Food"}
             rec_id_2: {"category": "Entertainment"}
         }
     }

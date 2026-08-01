@@ -43,7 +43,7 @@ def test_orchestrator_calls_expense_agent():
     
     result = call_orchestrator(
         "Analyze my spending", 
-        {"total_income": 1000, "total_expense": 500, "top_categories": [("food", 200)]}, 
+        {"total_income": 1000, "total_expense": 500, "top_categories": [("food", 200)]}
         [{"transaction_type": "expense", "amount": 200, "category": "food"}]
     )
     
@@ -63,7 +63,7 @@ def test_orchestrator_chains_agents():
     
     result = call_orchestrator(
         "Help me plan a budget based on my spending", 
-        {"total_income": 2000, "total_expense": 1500, "top_categories": [("rent", 1000)]}, 
+        {"total_income": 2000, "total_expense": 1500, "top_categories": [("rent", 1000)]}
         [{"transaction_type": "expense", "amount": 1000, "category": "rent"}]
     )
     

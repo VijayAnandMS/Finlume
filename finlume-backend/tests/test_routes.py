@@ -27,7 +27,7 @@ def test_auth_routes(client):
     token = token_data["access_token"]
 
     # 3. Retrieve current user info
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token"}
     me_response = client.get("/api/auth/me", headers=headers)
     assert me_response.status_code == 200
     assert me_response.json()["username"] == "testuser"
@@ -45,7 +45,7 @@ def test_transaction_routes_and_analytics(client):
     # Get auth token
     login_response = client.post("/api/auth/login", data={"username": dyn_user, "password": "testpassword", "email": f"{dyn_user}@test.com", "full_name": "Test User"})
     token = login_response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token"}
 
     # 1. Add some transactions (Income & Expense)
     tx1 = client.post(
@@ -135,7 +135,7 @@ def test_ai_chat_coach(client):
     login_response = client.post("/api/auth/login", data={"username": "testuser", "password": "testpassword", "email": "testuser@test.com", "full_name": "Test User"}
     )
     token = login_response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token"}
 
     # 1. Ask about overview/summary
     res_overview = client.post(

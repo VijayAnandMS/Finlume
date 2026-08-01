@@ -38,8 +38,7 @@ def auth_headers():
     unique_user = f"user_{uuid.uuid4().hex[:8]}"
     client.post("/api/auth/register", json={"full_name": "Test", "username": unique_user, "email": f"test_{unique_user}@test.com", "password": "password123"})
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
-    return {"Authorization": f"Bearer {token_res.json()['access_token']}"}"}
-
+    return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
 def test_missing_jwt():
     res = client.post("/api/import/upload")
     assert res.status_code == 401

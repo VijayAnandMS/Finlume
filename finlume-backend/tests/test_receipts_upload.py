@@ -39,8 +39,7 @@ def auth_headers():
     unique_user = f"user_{uuid.uuid4().hex[:8]}"
     client.post("/api/auth/register", json={"full_name": "Test", "username": unique_user, "email": f"test_{unique_user}@test.com", "password": "password123"})
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
-    return {"Authorization": f"Bearer {token_res.json()['access_token']}"}"}
-
+    return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
 def generate_valid_image_bytes():
     img = Image.new('RGB', (1, 1), color = 'red')
     img_byte_arr = io.BytesIO()
@@ -84,7 +83,7 @@ def test_cross_tenant_isolation(auth_headers):
         "email": f"{unique_user}@test.com", "password": "password123"
     })
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
-    auth2 = {"Authorization": f"Bearer {token_res.json()['access_token']}"}
+    auth2 = {"Authorization": f"Bearer {token_res.json()['access_token']"}
     
     # Try fetching with user 2
     res2 = client.get(f"/api/receipts/{sid}", headers=auth2)
