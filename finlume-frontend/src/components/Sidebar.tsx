@@ -59,6 +59,8 @@ export const Sidebar = ({ currentTab = 'Dashboard', onTabChange }: SidebarProps)
                     navigate('/dashboard');
                   } else if (item.name === 'Intelligence') {
                     navigate('/intelligence');
+                  } else if (item.name === 'Reports') {
+                    navigate('/insights');
                   } else if (onTabChange) {
                     onTabChange(item.name);
                   }

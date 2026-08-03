@@ -74,3 +74,11 @@ def get_full_intelligence_dashboard(current_user: User = Depends(get_current_use
         "risk": analyze_risk(txs, profile),
         "goals": analyze_goals(goals, txs)
     }
+
+from app.services.insights_service import generate_financial_insights_payload
+
+@router.get("/insights_engine")
+def get_financial_insights_engine(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    txs, _, profile = _get_user_context(current_user, db)
+    return generate_financial_insights_payload(txs, profile)
+

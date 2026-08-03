@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import api from '../lib/api';
 import { api as authApi } from '../services/api';
-// removed OnboardingWizard
+import { OnboardingWizard } from '../components/OnboardingWizard';
 import {
   Tooltip as ChartTooltip,
   ResponsiveContainer,
@@ -254,9 +254,9 @@ export const DashboardPage = () => {
   const handleOpenAddModal = () => {
     setEditingTxId(null);
     setTxForm({
-      date: new Date().toISOString().split('T')[0],
+      transaction_date: new Date().toISOString().split('T')[0],
       category: 'Food',
-      type: 'expense',
+      transaction_type: 'expense',
       amount: '',
       description: ''
     });
@@ -275,7 +275,7 @@ export const DashboardPage = () => {
     setShowTxModal(true);
   };
 
-  const handleDeleteTx = async (id: number) => {
+  const handleDeleteTx = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this transaction?')) return;
     try {
       await api.delete(`/api/transactions/${id}`);
@@ -1185,8 +1185,8 @@ export const DashboardPage = () => {
                 <input
                   type="date"
                   required
-                  value={txForm.date}
-                  onChange={(e) => setTxForm(prev => ({ ...prev, date: e.target.value }))}
+                  value={txForm.transaction_date}
+                  onChange={(e) => setTxForm(prev => ({ ...prev, transaction_date: e.target.value }))}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
@@ -1213,8 +1213,8 @@ export const DashboardPage = () => {
                 <div>
                   <label className="block text-xxs font-bold text-slate-400 uppercase">Type</label>
                   <select
-                    value={txForm.type}
-                    onChange={(e) => setTxForm(prev => ({ ...prev, type: e.target.value }))}
+                    value={txForm.transaction_type}
+                    onChange={(e) => setTxForm(prev => ({ ...prev, transaction_type: e.target.value }))}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
                     <option value="expense">Expense</option>

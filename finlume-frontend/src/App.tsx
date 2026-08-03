@@ -14,6 +14,8 @@ const ReceiptPreviewPage = React.lazy(() => import('./pages/ReceiptPreviewPage')
 const ReceiptHistoryPage = React.lazy(() => import('./pages/ReceiptHistoryPage').then(m => ({ default: m.default })));
 const ImportHistoryPage = React.lazy(() => import('./pages/ImportHistoryPage').then(m => ({ default: m.ImportHistoryPage })));
 const ImportDetailsPage = React.lazy(() => import('./pages/ImportDetailsPage').then(m => ({ default: m.ImportDetailsPage })));
+const InsightsDashboard = React.lazy(() => import('./pages/InsightsDashboard').then(m => ({ default: m.InsightsDashboard })));
+
 
 function App() {
   return (
@@ -33,7 +35,9 @@ function App() {
           <Route path="/receipts/history" element={<ReceiptHistoryPage />} />
           <Route path="/import/history" element={<ImportHistoryPage />} />
           <Route path="/import/history/:sessionId" element={<ImportDetailsPage />} />
+          <Route path="/insights" element={<InsightsDashboard />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
+
         </Routes>
       </Suspense>
     </BrowserRouter>
