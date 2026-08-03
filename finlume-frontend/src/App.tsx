@@ -9,7 +9,6 @@ const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage').t
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const TransactionsPage = React.lazy(() => import('./pages/TransactionsPage').then(m => ({ default: m.TransactionsPage })));
 const IntelligenceDashboard = React.lazy(() => import('./pages/IntelligenceDashboard').then(m => ({ default: m.default })));
-const FinancialDashboard = React.lazy(() => import('./pages/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })));
 const ImportWorkflowPage = React.lazy(() => import('./pages/ImportWorkflowPage').then(m => ({ default: m.ImportWorkflowPage })));
 const ReceiptPreviewPage = React.lazy(() => import('./pages/ReceiptPreviewPage').then(m => ({ default: m.default })));
 const ReceiptHistoryPage = React.lazy(() => import('./pages/ReceiptHistoryPage').then(m => ({ default: m.default })));
@@ -29,7 +28,6 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/intelligence" element={<IntelligenceDashboard />} />
-          <Route path="/financial-dashboard" element={<FinancialDashboard />} />
           <Route path="/imports/:session_id/workflow" element={<ImportWorkflowPage />} />
           <Route path="/receipts/:receipt_session_id/preview" element={<ReceiptPreviewPage />} />
           <Route path="/receipts/history" element={<ReceiptHistoryPage />} />
