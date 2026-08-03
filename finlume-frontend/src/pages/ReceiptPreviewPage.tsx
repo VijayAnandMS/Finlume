@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api } from "../services/api";
+import api from "../lib/api";
 
 const ReceiptPreviewPage: React.FC = () => {
   const { receipt_session_id } = useParams<{ receipt_session_id: string }>();

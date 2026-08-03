@@ -3,11 +3,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
+export interface ImportDetails {
+    filename?: string;
+    status?: string;
+    imported_count?: number;
+    duplicates_found?: number;
+    total_records?: number;
+    duration_ms?: number;
+}
+export interface ImportAudit {
+    id: string;
+    action: string;
+    timestamp: string;
+    resource?: string;
+    details?: string;
+}
+
 export const ImportDetailsPage = () => {
     const { sessionId } = useParams();
     const navigate = useNavigate();
-    const [details, setDetails] = useState(null);
-    const [audits, setAudits] = useState([]);
+    const [details, setDetails] = useState<ImportDetails | null>(null);
+    const [audits, setAudits] = useState<ImportAudit[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -36,7 +52,7 @@ export const ImportDetailsPage = () => {
                 <header className="flex justify-between items-center bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-100">Audit Details</h1>
-                        <p className="text-slate-400 mt-2">File: {details.filename} - Status: {details.status}</p>
+                        <p className="text-slate-400 mt-2">File: {details?.filename} - Status: {details?.status}</p>
                     </div>
                     <button onClick={() => navigate('/import/history')} className="px-6 py-2 rounded-xl text-slate-300 hover:bg-slate-800 transition">Back to History</button>
                 </header>
@@ -44,19 +60,19 @@ export const ImportDetailsPage = () => {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center">
                         <span className="text-sm text-slate-400">Imported Hooks</span>
-                        <span className="text-2xl font-bold text-emerald-400">{details.imported_count || '-'}</span>
+                        <span className="text-2xl font-bold text-emerald-400">{details?.imported_count || '-'}</span>
                     </div>
                     <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center">
                         <span className="text-sm text-slate-400">Duplicates Isolated</span>
-                        <span className="text-2xl font-bold text-rose-400">{details.duplicates_found || '-'}</span>
+                        <span className="text-2xl font-bold text-rose-400">{details?.duplicates_found || '-'}</span>
                     </div>
                     <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center">
                         <span className="text-sm text-slate-400">Total Bounds</span>
-                        <span className="text-2xl font-bold text-blue-400">{details.total_records || '-'}</span>
+                        <span className="text-2xl font-bold text-blue-400">{details?.total_records || '-'}</span>
                     </div>
                     <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center">
                         <span className="text-sm text-slate-400">Duration (ms)</span>
-                        <span className="text-2xl font-bold text-amber-400">{details.duration_ms || '-'}</span>
+                        <span className="text-2xl font-bold text-amber-400">{details?.duration_ms || '-'}</span>
                     </div>
                 </div>
 

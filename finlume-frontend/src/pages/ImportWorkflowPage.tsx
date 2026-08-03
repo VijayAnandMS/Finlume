@@ -3,11 +3,26 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
+export interface ImportRecord {
+    id: string;
+    raw_data: string;
+    is_duplicate: boolean;
+    status: string;
+    parsed_date: string;
+    parsed_merchant: string;
+    parsed_amount: number;
+    ai_category_suggestion?: string;
+}
+export interface SessionData {
+    id: string;
+    status: string;
+}
+
 export const ImportWorkflowPage = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const [sessionData, setSessionData] = useState(null);
-  const [records, setRecords] = useState([]);
+  
+  const [records, setRecords] = useState<ImportRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,7 +42,7 @@ export const ImportWorkflowPage = () => {
     fetchPreview();
   }, [sessionId]);
 
-  const toggleExclude = async (recordId, currentStatus) => {
+  const toggleExclude = async (recordId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'STAGED' ? 'DISCARDED' : 'STAGED';
     setRecords(records.map(r => r.id === recordId ? { ...r, status: newStatus } : r));
     try {
@@ -40,7 +55,7 @@ export const ImportWorkflowPage = () => {
     } catch {}
   };
 
-  const updateCategory = async (recordId, newCat) => {
+  const updateCategory = async (recordId: string, newCat: string) => {
     setRecords(records.map(r => r.id === recordId ? { ...r, ai_category_suggestion: newCat } : r));
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };

@@ -2,8 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import api from '../lib/api';
 
+export interface Transaction {
+    id: string;
+    transaction_date: string;
+    category: string;
+    transaction_type: string;
+    amount: number;
+    merchant?: string;
+    description?: string;
+}
+
 export const TransactionsPage = () => {
-    const [transactions, setTransactions] = useState([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Filtering & Pagination State
@@ -79,7 +89,7 @@ export const TransactionsPage = () => {
         setShowModal(true);
     };
 
-    const openEdit = (tx: any) => {
+    const openEdit = (tx: Transaction) => {
         setEditingId(tx.id);
         setForm({
             transaction_date: tx.transaction_date,
@@ -160,7 +170,7 @@ export const TransactionsPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/60 text-sm">
-                                    {transactions.map((tx: any) => (
+                                    {transactions.map((tx: Transaction) => (
                                         <tr key={tx.id} className="hover:bg-slate-950/20 transition-all text-sm">
                                             <td className="py-3 px-4 font-mono text-slate-400">{tx.transaction_date}</td>
                                             <td className="py-3 px-4 font-semibold text-white">{tx.category}</td>

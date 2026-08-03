@@ -3,9 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
+export interface ImportHistory {
+    id: string;
+    created_at: string;
+    filename: string;
+    status: string;
+    imported_count: number;
+    duplicates_found: number;
+}
+
 export const ImportHistoryPage = () => {
   const navigate = useNavigate();
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<ImportHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

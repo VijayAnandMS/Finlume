@@ -1,0 +1,12 @@
+src/pages/ImportHistoryPage.tsx: TS6133: 'React' is declared but its value is never read.
+src/pages/IntelligenceDashboard.tsx: TS6133: 'AnimatePresence' is declared but its value is never read.
+src/pages/ImportWorkflowPage.tsx: TS7006: Parameter 'recordId' implicitly has an 'any' type.
+src/pages/ImportWorkflowPage.tsx: TS7006: Parameter 'currentStatus' implicitly has an 'any' type.
+src/pages/DashboardPage.tsx: TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/ImportWorkflowPage.tsx: TS6133: 'React' is declared but its value is never read.
+src/pages/DashboardPage.tsx: TS2339: Property 'date' does not exist on type '{ transaction_date: string; category: string; transaction_type: string; amount: string; description: string; }'.
+src/pages/ImportWorkflowPage.tsx: TS2304: Cannot find name 'setSessionData'.
+src/pages/ImportWorkflowPage.tsx: TS7006: Parameter 'newCat' implicitly has an 'any' type.
+src/pages/ImportDetailsPage.tsx: TS6133: 'React' is declared but its value is never read.
+src/pages/DashboardPage.tsx: TS2339: Property 'type' does not exist on type '{ transaction_date: string; category: string; transaction_type: string; amount: string; description: string; }'.
+src/pages/DashboardPage.tsx: TS2353: Object literal may only specify known properties, and 'date' does not exist in type 'SetStateAction<{ transaction_date: string; category: string; transaction_type: string; amount: string; description: string; }>'.

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import api from '../lib/api';
 import { api as authApi } from '../services/api';
-import { OnboardingWizard } from '../components/OnboardingWizard';
+// removed OnboardingWizard
 import {
   Tooltip as ChartTooltip,
   ResponsiveContainer,
