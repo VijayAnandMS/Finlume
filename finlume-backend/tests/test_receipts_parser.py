@@ -10,43 +10,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models.models import ReceiptSession, OCRResult
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_parser_bounds.db"
-from sqlalchemy.pool import NullPool
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
-
-@pytest.fixture(scope="module", autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-    engine.dispose()
-    import os
-    if os.path.exists("test_parser_bounds.db"):
-        os.remove("test_parser_bounds.db")
+from tests.conftest import TestingSessionLocal
+from app.models.models import User
 
 @pytest.fixture
-def auth_headers():
+def auth_headers(client):
     import uuid
     unique_user = f"user_{uuid.uuid4().hex[:8]}"
     client.post("/api/auth/register", json={"full_name": "Test", "username": unique_user, "email": f"test_{unique_user}@test.com", "password": "password123"})
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
     return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
-def test_parser_normalizations(auth_headers):
+
+def test_parser_normalizations(client, auth_headers):
     # Setup Internal States structurally directly
     db = TestingSessionLocal()
-    from app.routes.auth import get_password_hash
-    from app.models.models import User
     usr = db.query(User).order_by(User.id.desc()).first()
     
     rs = ReceiptSession(user_id=usr.id, filename="test.jpg", storage_url="test.jpg")
@@ -65,9 +42,10 @@ def test_parser_normalizations(auth_headers):
     ocr = OCRResult(receipt_session_id=rs.id, detected_fields=json.dumps(mock_detected))
     db.add(ocr)
     db.commit()
+    rs_id = rs.id
     db.close()
     
-    res = client.post(f"/api/receipts/{rs.id}/parse", headers=auth_headers)
+    res = client.post(f"/api/receipts/{rs_id}/parse", headers=auth_headers)
     assert res.status_code == 200
     
     data = res.json()
@@ -78,7 +56,7 @@ def test_parser_normalizations(auth_headers):
     assert data["total"] == 15.7
     assert data["currency"] == "USD"
     
-def test_parser_missing_fields(auth_headers):
+def test_parser_missing_fields(client, auth_headers):
     db = TestingSessionLocal()
     usr = db.query(User).order_by(User.id.desc()).first()
     
@@ -93,9 +71,10 @@ def test_parser_missing_fields(auth_headers):
     ocr = OCRResult(receipt_session_id=rs.id, detected_fields=json.dumps(mock_detected))
     db.add(ocr)
     db.commit()
+    rs_id = rs.id
     db.close()
     
-    res = client.post(f"/api/receipts/{rs.id}/parse", headers=auth_headers)
+    res = client.post(f"/api/receipts/{rs_id}/parse", headers=auth_headers)
     data = res.json()
     assert data["total"] == 5.5  # Recovered logic heuristic
     assert "Unknown Merchant" in data["merchant_name"]

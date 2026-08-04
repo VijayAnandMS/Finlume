@@ -83,7 +83,7 @@ def test_cross_tenant_isolation(auth_headers):
         "email": f"{unique_user}@test.com", "password": "password123"
     })
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
-    auth2 = {"Authorization": f"Bearer {token_res.json()['access_token']"}
+    auth2 = {"Authorization": f"Bearer {token_res.json()['access_token']}"}
     
     # Try fetching with user 2
     res2 = client.get(f"/api/receipts/{sid}", headers=auth2)

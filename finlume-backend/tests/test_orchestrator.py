@@ -42,8 +42,9 @@ def test_orchestrator_calls_expense_agent():
     ]
     
     result = call_orchestrator(
+        1,
         "Analyze my spending", 
-        {"total_income": 1000, "total_expense": 500, "top_categories": [("food", 200)]}
+        {"total_income": 1000, "total_expense": 500, "top_categories": [("food", 200)]},
         [{"transaction_type": "expense", "amount": 200, "category": "food"}]
     )
     
@@ -62,8 +63,9 @@ def test_orchestrator_chains_agents():
     ]
     
     result = call_orchestrator(
+        1,
         "Help me plan a budget based on my spending", 
-        {"total_income": 2000, "total_expense": 1500, "top_categories": [("rent", 1000)]}
+        {"total_income": 2000, "total_expense": 1500, "top_categories": [("rent", 1000)]},
         [{"transaction_type": "expense", "amount": 1000, "category": "rent"}]
     )
     
@@ -76,7 +78,7 @@ def test_orchestrator_max_iterations():
     
     mock_client.messages.create.return_value = MockMessageResponse([MockToolUseBlock("expense_agent", "tool_inf")])
     
-    result = call_orchestrator("Keep analyzing", {}, [])
+    result = call_orchestrator(1, "Keep analyzing", {}, [])
     
     assert "too many steps" in result["reply"]
     assert result["agents_used"] == ["expense_agent"]
@@ -88,7 +90,7 @@ def test_orchestrator_fallback_on_exception():
     mock_anthropic.Anthropic.side_effect = Exception("Network Error")
     
     with pytest.raises(Exception, match="Network Error"):
-        call_orchestrator("Test", {}, [])
+        call_orchestrator(1, "Test", {}, [])
         
     mock_anthropic.Anthropic.side_effect = None
 

@@ -10,38 +10,17 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import sessionmaker
 from app.models.models import ReceiptSession, OCRResult, ParsedReceipt, ReceiptIntelligence
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_ai_intelligence.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
-
-@pytest.fixture(scope="module", autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-    engine.dispose()
-    import os
-    if os.path.exists("test_ai_intelligence.db"):
-        os.remove("test_ai_intelligence.db")
+from tests.conftest import TestingSessionLocal
 
 @pytest.fixture
-def auth_headers():
+def auth_headers(client):
     import uuid
     unique_user = f"user_{uuid.uuid4().hex[:8]}"
     client.post("/api/auth/register", json={"full_name": "Test", "username": unique_user, "email": f"test_{unique_user}@test.com", "password": "password123"})
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
     return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
-def test_intelligence_mapping(auth_headers):
+
+def test_intelligence_mapping(client, auth_headers):
     db = TestingSessionLocal()
     from app.models.models import User
     usr = db.query(User).order_by(User.id.desc()).first()
@@ -62,10 +41,10 @@ def test_intelligence_mapping(auth_headers):
     )
     db.add(pr)
     db.commit()
-    
+    rs_id = rs.id
     db.close()
     
-    res = client.post(f"/api/receipts/{rs.id}/intelligence", headers=auth_headers)
+    res = client.post(f"/api/receipts/{rs_id}/intelligence", headers=auth_headers)
     assert res.status_code == 200
     
     data = res.json()
@@ -77,7 +56,7 @@ def test_intelligence_mapping(auth_headers):
     assert data["overall_confidence"] > 0
     assert data["requires_manual_review"] is False
     
-def test_intelligence_failure_safeguards(auth_headers):
+def test_intelligence_failure_safeguards(client, auth_headers):
     # Test attempting intelligence parsing without Prerequisite schemas safely bounds 400 limitations organically
     db = TestingSessionLocal()
     from app.models.models import User
@@ -86,8 +65,9 @@ def test_intelligence_failure_safeguards(auth_headers):
     rs = ReceiptSession(user_id=usr.id, filename="fail_test.jpg", storage_url="fail_test.jpg")
     db.add(rs)
     db.commit()
+    rs_id = rs.id
     db.close()
     
-    res = client.post(f"/api/receipts/{rs.id}/intelligence", headers=auth_headers)
+    res = client.post(f"/api/receipts/{rs_id}/intelligence", headers=auth_headers)
     assert res.status_code == 400
     assert "Cannot apply Intelligence without Parsed Data" in res.json()["detail"]

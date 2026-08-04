@@ -10,38 +10,17 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import sessionmaker
 from app.models.models import ReceiptSession, OCRResult
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_unified_workflow.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
-
-@pytest.fixture(scope="module", autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-    engine.dispose()
-    import os
-    if os.path.exists("test_unified_workflow.db"):
-        os.remove("test_unified_workflow.db")
+from tests.conftest import TestingSessionLocal
 
 @pytest.fixture
-def auth_headers():
+def auth_headers(client):
     import uuid
     unique_user = f"user_{uuid.uuid4().hex[:8]}"
     client.post("/api/auth/register", json={"full_name": "Test", "username": unique_user, "email": f"test_{unique_user}@test.com", "password": "password123"})
     token_res = client.post("/api/auth/login", data={"username": unique_user, "password": "password123"})
     return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
-def test_unified_workflow_processing(auth_headers):
+
+def test_unified_workflow_processing(client, auth_headers):
     # Setup base requirements mocking OCR Provider output securely tracking DB contexts organically
     db = TestingSessionLocal()
     from app.models.models import User
@@ -66,10 +45,11 @@ def test_unified_workflow_processing(auth_headers):
     )
     db.add(ocr)
     db.commit()
+    rs_id = rs.id
     db.close()
     
     # 1. Process Unified Receipt End to End
-    res = client.post(f"/api/receipts/{rs.id}/process", headers=auth_headers)
+    res = client.post(f"/api/receipts/{rs_id}/process", headers=auth_headers)
     assert res.status_code == 200
     
     data = res.json()
@@ -85,11 +65,11 @@ def test_unified_workflow_processing(auth_headers):
     assert data["confidence_score"] > 0
     
     # 2. Test Get Preview Logic organically functionally
-    get_res = client.get(f"/api/receipts/{rs.id}/preview", headers=auth_headers)
+    get_res = client.get(f"/api/receipts/{rs_id}/preview", headers=auth_headers)
     assert get_res.status_code == 200
     assert get_res.json()["confidence_score"] == data["confidence_score"]
 
-def test_tenant_isolation(auth_headers):
+def test_tenant_isolation(client, auth_headers):
     # Tests users cannot inspect isolated receipts safely smoothly cleanly
     db = TestingSessionLocal()
     from app.models.models import User
@@ -104,7 +84,8 @@ def test_tenant_isolation(auth_headers):
     ocr = OCRResult(receipt_session_id=rs.id, detected_fields=json.dumps({}))
     db.add(ocr)
     db.commit()
+    rs_id = rs.id
     db.close()
     
-    res = client.get(f"/api/receipts/{rs.id}/preview", headers=auth_headers)
+    res = client.get(f"/api/receipts/{rs_id}/preview", headers=auth_headers)
     assert res.status_code == 404

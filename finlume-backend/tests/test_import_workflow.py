@@ -60,7 +60,7 @@ def test_workflow_lifecycle(auth_headers):
     
     patch_payload = {
         "updates": {
-            rec_id_1: {"status": "DISCARDED", "category": "Food"}
+            rec_id_1: {"status": "DISCARDED", "category": "Food"},
             rec_id_2: {"category": "Entertainment"}
         }
     }

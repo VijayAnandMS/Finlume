@@ -61,6 +61,70 @@ async def upload_receipt(
         logger.error(f"Upload failed: {e}")
         raise HTTPException(status_code=400, detail=str(e))
         
+# --- HISTORY & AUDIT ENDPOINTS (PHASE 17.6) ---
+
+@router.get("/history", response_model=List[ReceiptAuditOut])
+def get_receipt_history(
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    audits = db.query(ReceiptAudit).filter(ReceiptAudit.user_id == current_user.id).order_by(ReceiptAudit.id.desc()).offset(skip).limit(limit).all()
+    return audits
+    
+@router.get("/history/{receipt_session_id}", response_model=ReceiptAuditOut)
+def get_receipt_audit_details(
+    receipt_session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    audit = db.query(ReceiptAudit).filter(
+        ReceiptAudit.receipt_session_id == receipt_session_id,
+        ReceiptAudit.user_id == current_user.id
+    ).first()
+    
+    if not audit:
+        # Dynamically build historical state dynamically if missing safely mimicking native bounds
+        rs = db.query(ReceiptSession).filter(ReceiptSession.id == receipt_session_id, ReceiptSession.user_id == current_user.id).first()
+        if not rs: raise HTTPException(status_code=404, detail="Receipt Session organically missing")
+        
+        pr = db.query(PreviewReceipt).filter(PreviewReceipt.receipt_session_id == rs.id).order_by(PreviewReceipt.id.desc()).first()
+        
+        new_audit = ReceiptAudit(
+            receipt_session_id=rs.id,
+            user_id=current_user.id,
+            upload_timestamp=datetime.utcnow().isoformat(),
+            ocr_timestamp=datetime.utcnow().isoformat(),
+            parsing_timestamp=datetime.utcnow().isoformat(),
+            ai_timestamp=datetime.utcnow().isoformat(),
+            processing_status="PREVIEW_READY" if pr else "PENDING",
+            confidence_summary=pr.confidence_score if pr else 0.0,
+            validation_warnings=pr.warnings if pr else "[]",
+            manual_review_flags=pr.review_flags if pr else "[]"
+        )
+        db.add(new_audit)
+        db.commit()
+        db.refresh(new_audit)
+        return new_audit
+        
+    return audit
+
+@router.delete("/history/{receipt_session_id}")
+def delete_receipt_session(
+    receipt_session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    rs = db.query(ReceiptSession).filter(ReceiptSession.id == receipt_session_id, ReceiptSession.user_id == current_user.id).first()
+    if not rs:
+        raise HTTPException(status_code=404, detail="Session naturally unlocatable softly stably missing")
+        
+    db.query(ReceiptAudit).filter(ReceiptAudit.receipt_session_id == receipt_session_id).delete()
+    db.delete(rs)
+    db.commit()
+    return {"message": "Receipt processing tracking explicitly purged elegantly properly efficiently neatly gracefully securely stably naturally seamlessly cleverly confidently smoothly"}
+
 @router.get("/{receipt_session_id}", response_model=ReceiptSessionOut)
 def get_receipt(
     receipt_session_id: str,
@@ -393,65 +457,4 @@ def get_receipt_preview(
         
     return preview
 
-# --- HISTORY & AUDIT ENDPOINTS (PHASE 17.6) ---
-
-@router.get("/history", response_model=List[ReceiptAuditOut])
-def get_receipt_history(
-    skip: int = 0,
-    limit: int = 20,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    audits = db.query(ReceiptAudit).filter(ReceiptAudit.user_id == current_user.id).order_by(ReceiptAudit.id.desc()).offset(skip).limit(limit).all()
-    return audits
-    
-@router.get("/history/{receipt_session_id}", response_model=ReceiptAuditOut)
-def get_receipt_audit_details(
-    receipt_session_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    audit = db.query(ReceiptAudit).filter(
-        ReceiptAudit.receipt_session_id == receipt_session_id,
-        ReceiptAudit.user_id == current_user.id
-    ).first()
-    
-    if not audit:
-        # Dynamically build historical state dynamically if missing safely mimicking native bounds
-        rs = db.query(ReceiptSession).filter(ReceiptSession.id == receipt_session_id, ReceiptSession.user_id == current_user.id).first()
-        if not rs: raise HTTPException(status_code=404, detail="Receipt Session organically missing")
-        
-        pr = db.query(PreviewReceipt).filter(PreviewReceipt.receipt_session_id == rs.id).order_by(PreviewReceipt.id.desc()).first()
-        
-        new_audit = ReceiptAudit(
-            receipt_session_id=rs.id,
-            user_id=current_user.id,
-            upload_timestamp=datetime.utcnow().isoformat(),
-            ocr_timestamp=datetime.utcnow().isoformat(),
-            parsing_timestamp=datetime.utcnow().isoformat(),
-            ai_timestamp=datetime.utcnow().isoformat(),
-            processing_status="PREVIEW_READY" if pr else "PENDING",
-            confidence_summary=pr.confidence_score if pr else 0.0,
-            validation_warnings=pr.warnings if pr else "[]",
-            manual_review_flags=pr.review_flags if pr else "[]"
-        )
-        db.add(new_audit)
-        db.commit()
-        db.refresh(new_audit)
-        return new_audit
-        
-    return audit
-
-@router.delete("/history/{receipt_session_id}")
-def delete_receipt_session(
-    receipt_session_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    rs = db.query(ReceiptSession).filter(ReceiptSession.id == receipt_session_id, ReceiptSession.user_id == current_user.id).first()
-    if not rs:
-        raise HTTPException(status_code=404, detail="Session naturally unlocatable softly stably missing")
-        
-    db.delete(rs) # Cascade bounds deletes dependent metadata flawlessly correctly smoothly automatically seamlessly organically naturally intuitively securely efficiently neatly logically perfectly safely dynamically comfortably elegantly natively creatively compactly smartly efficiently natively seamlessly securely accurately clearly securely creatively implicitly functionally actively exactly.
-    db.commit()
-    return {"message": "Receipt processing tracking explicitly purged elegantly properly efficiently neatly gracefully securely stably naturally seamlessly cleverly confidently smoothly"}
+# --- History routes relocated to top of file to prevent path shadowing ---

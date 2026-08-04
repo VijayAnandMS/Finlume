@@ -101,6 +101,30 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
         
         log_audit(db, import_session.id, current_user.id, "Preview Generated", None, f"Processed {len(transactions)} txs")
         
+    except HTTPException as e:
+        if import_session:
+             log_audit(db, import_session.id, current_user.id, "Validation Failed", filename, str(e.detail))
+             import_session.status = "FAILED"
+             db.commit()
+        raise e
+    except UnsupportedFileException as e:
+        if import_session:
+             log_audit(db, import_session.id, current_user.id, "Validation Failed", filename, str(e))
+             import_session.status = "FAILED"
+             db.commit()
+        raise HTTPException(status_code=415, detail=str(e))
+    except MissingColumnsException as e:
+        if import_session:
+             log_audit(db, import_session.id, current_user.id, "Validation Failed", filename, str(e))
+             import_session.status = "FAILED"
+             db.commit()
+        raise HTTPException(status_code=422, detail=str(e))
+    except (CorruptedFileException, ParsingFailureException) as e:
+        if import_session:
+             log_audit(db, import_session.id, current_user.id, "Validation Failed", filename, str(e))
+             import_session.status = "FAILED"
+             db.commit()
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         if import_session:
              log_audit(db, import_session.id, current_user.id, "Validation Failed", filename, str(e))
@@ -164,10 +188,12 @@ def confirm_import(session_id: str, db: Session = Depends(get_db), current_user:
         tx_data = json.loads(rec.raw_data)
         if tx_data.get("category_source") == "MANUAL_REQUIRED": manual += 1
             
+        tx_type = "income" if rec.ai_category_suggestion == "Salary" else "expense"
         new_txs.append(Transaction(
-            user_id=current_user.id, amount=rec.parsed_amount, transaction_date=rec.parsed_date,
+            user_id=current_user.id, amount=abs(rec.parsed_amount) if rec.parsed_amount is not None else 0.0, transaction_date=rec.parsed_date,
+            transaction_type=tx_type,
             description=rec.parsed_merchant, merchant=rec.parsed_merchant,
-            category=rec.ai_category_suggestion or "Miscellaneous", is_recurring=False
+            category=rec.ai_category_suggestion or "Miscellaneous"
         ))
         rec.status = "IMPORTED"
         
@@ -181,15 +207,11 @@ def confirm_import(session_id: str, db: Session = Depends(get_db), current_user:
     log_audit(db, si.id, current_user.id, "Import Confirmed", None, f"Imported {len(new_txs)}, Skipped {skipped}")
     return {"message": "Success", "imported": len(new_txs)}
 
-@router.delete("/{session_id}")
+@router.delete("/{session_id}", status_code=204)
 def cancel_import_session(session_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     si = db.query(ImportSession).filter(ImportSession.id == session_id, ImportSession.user_id == current_user.id).first()
     if not si: raise HTTPException(status_code=404, detail="Session not found")
-    
-    # Audit log persistence? If cascades delete audit trails, we'd lose audit history on cancellation. 
-    # But usually cascades happen. To keep audit we should soft delete or decouple cascading. 
-    # For Phase 16.8 compliance, we'll just log before physical deletion natively.
-    si.status = "CANCELLED"
+    db.delete(si)
     db.commit()
     return None
 

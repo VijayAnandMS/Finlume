@@ -60,7 +60,8 @@ def test_api_endpoint(client):
     login_response = client.post("/api/auth/login", data={"username": "advisortest", "password": "password", "email": "advisortest@test.com", "full_name": "Test User"}
     )
     token = login_response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token"}
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
     with patch("app.routes.advisor.call_orchestrator") as mock_orchestrator:
         mock_orchestrator.return_value = {
@@ -68,7 +69,7 @@ def test_api_endpoint(client):
             "agents_used": ["advisor_agent"],
             "advisor_data": {
                 "recommendation": "Go for it",
-                "calculations": {"remaining": 500}
+                "calculations": {"remaining": 500},
                 "affordability_score": "Good",
                 "risk_level": "Low"
             }
@@ -77,7 +78,7 @@ def test_api_endpoint(client):
         with patch("app.routes.advisor.settings.ANTHROPIC_API_KEY", "mock-key"):
             response = client.post(
                 "/api/agents/advisor",
-                json={"question": "Can I afford this?"}
+                json={"question": "Can I afford this?"},
                 headers=headers
             )
             

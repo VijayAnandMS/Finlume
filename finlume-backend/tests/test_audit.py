@@ -52,7 +52,7 @@ def test_auth_missing_or_expired_jwt(client):
 
     # 3. Tampered/Bad Secret Token
     bad_secret_token = jwt.encode(
-        {"exp": 9999999999, "sub": "audituser"}
+        {"exp": 9999999999, "sub": "audituser"},
         "wrongsecretkey",
         algorithm="HS256"
     )
@@ -84,7 +84,7 @@ def test_transaction_cross_user_isolation(client):
     # User A creates a transaction
     tx_a = client.post(
         "/api/transactions/",
-        headers={"Authorization": f"Bearer {token_a}"}
+        headers={"Authorization": f"Bearer {token_a}"},
         json={
             "transaction_date": "2026-07-08",
             "category": "Salary",
@@ -108,7 +108,7 @@ def test_transaction_cross_user_isolation(client):
     # User B tries to update User A's transaction (should fail 404)
     res_update = client.put(
         f"/api/transactions/{tx_a_id}",
-        headers={"Authorization": f"Bearer {token_b}"}
+        headers={"Authorization": f"Bearer {token_b}"},
         json={
             "transaction_date": "2026-07-08",
             "category": "Salary",
@@ -135,7 +135,7 @@ def test_analytics_exact_math(client):
     )
     token_c = client.post("/api/auth/login", data={"username": "userc", "password": "passwordc", "email": "userc@test.com", "full_name": "Test User"}
     ).json()["access_token"]
-    headers = {"Authorization": f"Bearer {token_c"}
+    headers = {"Authorization": f"Bearer {token_c}"}
 
     # Add controlled cashflows
     # Income: 20000
@@ -170,7 +170,7 @@ def test_ai_coach_claude_response(client):
     login_response = client.post("/api/auth/login", data={"username": "agentuser", "password": "passworda", "email": "agentuser@test.com", "full_name": "Test User"}
     )
     token = login_response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token"}
+    headers = {"Authorization": f"Bearer {token}"}
 
     sys.modules["anthropic"] = mock_anthropic_module
     
@@ -202,7 +202,7 @@ def test_ai_coach_failing_api_fallback(client):
     login_response = client.post("/api/auth/login", data={"username": "fallbackuser", "password": "passwordb", "email": "fallbackuser@test.com", "full_name": "Test User"}
     )
     token = login_response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token"}
+    headers = {"Authorization": f"Bearer {token}"}
 
     sys.modules["anthropic"] = mock_anthropic_module
     
@@ -235,7 +235,7 @@ def test_ai_coach_malformed_transactions(client):
     )
     token_d = client.post("/api/auth/login", data={"username": "userd", "password": "passwordd", "email": "userd@test.com", "full_name": "Test User"}
     ).json()["access_token"]
-    headers = {"Authorization": f"Bearer {token_d"}
+    headers = {"Authorization": f"Bearer {token_d}"}
 
     # Add transaction with zero amount and empty details
     client.post(
