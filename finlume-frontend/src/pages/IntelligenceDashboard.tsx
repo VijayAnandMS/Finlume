@@ -163,7 +163,7 @@ const IntelligenceDashboard: React.FC = () => {
                     </div>
 
                     <div className="grid gap-4">
-                        {recommendations.recommendations.map((rec: string, idx: number) => (
+                        {(recommendations || []).map((rec: string, idx: number) => (
                             <div key={idx} className="flex gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-600/50">
                                 <div className="hidden sm:flex shrink-0 w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30 items-center justify-center text-yellow-600 dark:text-yellow-400 font-bold text-sm">
                                     {idx + 1}
@@ -189,7 +189,7 @@ const IntelligenceDashboard: React.FC = () => {
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Behavioral Insights</h2>
                     </div>
                     <ul className="space-y-4">
-                        {insights.insights.map((insight: string, idx: number) => (
+                        {(insights || []).map((insight: string, idx: number) => (
                             <li key={idx} className="flex gap-3 text-gray-600 dark:text-gray-300">
                                 <span className="bg-blue-500 w-1.5 h-1.5 rounded-full mt-2.5 shrink-0" />
                                 {insight}
@@ -209,10 +209,10 @@ const IntelligenceDashboard: React.FC = () => {
                         <GoalIcon className="w-6 h-6 text-emerald-500" />
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Target Tracking Matrix</h2>
                     </div>
-                    {goals.goal_intelligence.length === 0 ? (
+                    {(!goals || goals.length === 0) ? (
                         <p className="text-gray-500">No active tracking patterns mapped globally.</p>
                     ) : (
-                        goals.goal_intelligence.map((goal: any, idx: number) => (
+                        (goals || []).map((goal: any, idx: number) => (
                             <div key={idx} className="border-t border-gray-100 dark:border-gray-700/50 pt-4 first:border-0 first:pt-0">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
