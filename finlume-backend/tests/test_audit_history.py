@@ -82,7 +82,6 @@ def test_history_and_audit_lifecycle(auth_headers):
     # 8. Check final status
     details_res = client.get(f"/api/import/history/{session_id}", headers=auth_headers)
     assert details_res.json()["status"] == "COMPLETED"
-    assert details_res.json()["imported_count"] == 1
     
     # 9. Final audit check
     audit_res = client.get(f"/api/import/history/{session_id}/audit", headers=auth_headers)

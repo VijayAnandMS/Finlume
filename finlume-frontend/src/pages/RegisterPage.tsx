@@ -91,7 +91,7 @@ export const RegisterPage = () => {
                     </div>
 
                     <button type="submit" disabled={isLoading || !isMatch || !isLengthValid} className="w-full flex items-center justify-center bg-white text-black font-bold rounded-xl py-3.5 hover:bg-slate-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] disabled:opacity-50 disabled:cursor-not-allowed mt-6">
-                        {isLoading ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Creating Core...</> : 'Initialize Copilot'}
+                        {isLoading ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Creating Account...</> : 'Create Account'}
                     </button>
                 </form>
 

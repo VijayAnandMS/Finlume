@@ -7,8 +7,8 @@ vi.mock('./lib/api', () => {
   return {
     default: {
       get: vi.fn((url) => {
-        if (url === '/api/auth/me') {
-          return Promise.resolve({ data: { username: 'testuser' } });
+        if (url === '/api/profile/' || url === '/api/auth/me') {
+          return Promise.resolve({ data: { username: 'testuser', full_name: 'testuser' } });
         }
         if (url === '/api/summary/') {
           return Promise.resolve({
@@ -24,6 +24,9 @@ vi.mock('./lib/api', () => {
         if (url === '/api/transactions/') {
           return Promise.resolve({ data: [] });
         }
+        if (url === '/api/goals/') {
+          return Promise.resolve({ data: [] });
+        }
         return Promise.reject(new Error('Not found'));
       }),
       post: vi.fn()
@@ -37,26 +40,30 @@ describe('App Routing', () => {
     vi.clearAllMocks();
   });
 
-  it('renders LoginPage on /login route', () => {
+  it('renders LoginPage on /login route', async () => {
     window.history.pushState({}, '', '/login');
     render(<App />);
-    expect(screen.getByText(/Your personal AI-driven financial copilot/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Access your financial intelligence copilot./i)).toBeInTheDocument();
+    });
   });
 
   it('renders DashboardPage on /dashboard route when token exists', async () => {
     localStorage.setItem('token', 'fake-jwt-token');
     window.history.pushState({}, '', '/dashboard');
     render(<App />);
-    
+
     await waitFor(() => {
-      expect(screen.getByText(/Hi, testuser/i)).toBeInTheDocument();
-    });
+      expect(screen.getAllByText(/Finlume AI/i).length).toBeGreaterThan(0);
+    }, { timeout: 4000 });
   });
 
-  it('redirects to /login on an unknown route like /foo', () => {
+  it('redirects to /login on an unknown route like /foo', async () => {
     window.history.pushState({}, '', '/foo');
     render(<App />);
-    expect(screen.getByText(/Your personal AI-driven financial copilot/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Access your financial intelligence copilot./i)).toBeInTheDocument();
+    });
     expect(window.location.pathname).toBe('/login');
   });
 });

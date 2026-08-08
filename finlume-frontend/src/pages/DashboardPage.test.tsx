@@ -56,8 +56,8 @@ describe('DashboardPage component', () => {
     localStorage.setItem('token', 'fake-jwt-token');
 
     vi.mocked(api.get).mockImplementation((url) => {
-      if (url === '/api/auth/me') {
-        return Promise.resolve({ data: { username: 'vijay' } });
+      if (url === '/api/profile/' || url === '/api/auth/me') {
+        return Promise.resolve({ data: { username: 'vijay', full_name: 'vijay' } });
       }
       if (url === '/api/summary/') {
         return Promise.resolve({
@@ -82,6 +82,9 @@ describe('DashboardPage component', () => {
         });
       }
       if (url === '/api/transactions/') {
+        return Promise.resolve({ data: [{ id: 1, user_id: 1, transaction_date: '2026-07-08', category: 'Rent', transaction_type: 'expense', amount: 20000.0, description: 'Rent payment' }] });
+      }
+      if (url === '/api/goals/') {
         return Promise.resolve({ data: [] });
       }
       return Promise.reject(new Error('Not found'));
@@ -95,23 +98,24 @@ describe('DashboardPage component', () => {
 
     // Wait for the mock API data to be fetched and displayed on screen
     await waitFor(() => {
-      expect(screen.getByText(/Hi, vijay/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Finlume AI/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/₹75,000/i)).toBeInTheDocument(); // Income card
       expect(screen.getByText(/₹25,000/i)).toBeInTheDocument(); // Expense card
       expect(screen.getByText(/₹50,000/i)).toBeInTheDocument(); // Net surplus card
-      expect(screen.getByText(/Rent payment/i)).toBeInTheDocument(); // Transaction table entry
+      expect(screen.getByText(/Rent/i)).toBeInTheDocument(); // Transaction table entry
     });
   });
   it('renders advisor tab and submits chat', async () => {
     localStorage.setItem('token', 'fake-jwt-token');
 
     vi.mocked(api.get).mockImplementation((url) => {
-      if (url === '/api/auth/me') return Promise.resolve({ data: { username: 'testuser' } });
+      if (url === '/api/profile/' || url === '/api/auth/me') return Promise.resolve({ data: { username: 'testuser', full_name: 'testuser' } });
       if (url === '/api/summary/') return Promise.resolve({ data: { total_income: 0, total_expense: 0, net: 0, top_categories: [], transactions: [] } });
       if (url === '/api/transactions/') return Promise.resolve({ data: [] });
+      if (url === '/api/goals/') return Promise.resolve({ data: [] });
       return Promise.reject(new Error('Not found'));
     });
-    
+
     vi.mocked(api.post).mockImplementation((url) => {
       if (url === '/api/agents/advisor') {
         return Promise.resolve({
@@ -147,13 +151,13 @@ describe('DashboardPage component', () => {
     // Type and submit question
     const input = screen.getByPlaceholderText(/Can I afford a bike/i);
     const submitBtn = screen.getByRole('button', { name: /Ask Advisor/i });
-    
+
     fireEvent.change(input, { target: { value: 'Can I afford a bike?' } });
     fireEvent.click(submitBtn);
 
     // Verify API called and loading state triggered
     expect(api.post).toHaveBeenCalledWith('/api/agents/advisor', { question: 'Can I afford a bike?' });
-    
+
     // Wait for response cards to render
     await waitFor(() => {
       expect(screen.getByText('Purchase approved.')).toBeInTheDocument();

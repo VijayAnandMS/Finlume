@@ -10,12 +10,12 @@ sys.modules["anthropic"] = mock_anthropic
 
 class MockTextBlock:
     def __init__(self, text):
-        self.transaction_type="text"
+        self.type="text"
         self.text = text
 
 class MockToolUseBlock:
     def __init__(self, name, tool_id):
-        self.transaction_type="tool_use"
+        self.type="tool_use"
         self.name = name
         self.id = tool_id
 
