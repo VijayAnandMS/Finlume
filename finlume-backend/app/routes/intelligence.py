@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from app.core.rate_limit import limiter
+from app.core.config import settings
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 
@@ -58,7 +60,8 @@ def get_goal_intelligence(current_user: User = Depends(get_current_user), db: Se
     return {"goal_intelligence": analyze_goals(goals, txs)}
 
 @router.get("/dashboard")
-def get_full_intelligence_dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_AI)
+def get_full_intelligence_dashboard(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Aggregates all intelligence engines into a single call for the primary frontend dashboard view."""
     txs, goals, profile = _get_user_context(current_user, db)
     

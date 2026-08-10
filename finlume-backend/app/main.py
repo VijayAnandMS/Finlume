@@ -1,9 +1,9 @@
 import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from app.core.rate_limit import limiter
 from app.core.config import settings
 from app.core.logging_config import log_audit_action
 from app.routes import (
@@ -13,8 +13,6 @@ from app.routes import (
 )
 
 from contextlib import asynccontextmanager
-
-limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

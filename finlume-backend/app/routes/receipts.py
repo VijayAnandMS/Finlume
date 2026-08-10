@@ -1,7 +1,9 @@
 import os
 import json
 import logging
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, BackgroundTasks, Request
+from app.core.rate_limit import limiter
+from app.core.config import settings
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
@@ -294,7 +296,9 @@ def get_parsed_receipt(
 # --- AI INTELLIGENCE ENGINE (PHASE 17.4) ---
 
 @router.post("/{receipt_session_id}/intelligence", response_model=ReceiptIntelligenceOut)
+@limiter.limit(settings.RATE_LIMIT_AI)
 def execute_receipt_intelligence(
+    request: Request,
     receipt_session_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -358,7 +362,9 @@ def get_receipt_intelligence(
 # --- END-TO-END WORKFLOW INTEGRATION (PHASE 17.5) ---
 
 @router.post("/{receipt_session_id}/process", response_model=PreviewReceiptOut)
+@limiter.limit(settings.RATE_LIMIT_AI)
 def end_to_end_receipt_process(
+    request: Request,
     receipt_session_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

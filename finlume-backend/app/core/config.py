@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     FRONTEND_ORIGIN: str = "http://localhost:5173"
+    RATE_LIMIT_AI: str = "10/minute"
+    RATE_LIMIT_DEFAULT: str = "60/minute"
 
     model_config = SettingsConfigDict(
         env_file=".env",

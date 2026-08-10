@@ -44,6 +44,7 @@ services:
         condition: service_healthy
     volumes:
       - backend_logs:/app/logs
+      - receipt_media_data:/app/receipts_storage
 
   frontend:
     build:
@@ -65,3 +66,4 @@ volumes:
   postgres_data:
   chroma_data:
   backend_logs:
+  receipt_media_data:
