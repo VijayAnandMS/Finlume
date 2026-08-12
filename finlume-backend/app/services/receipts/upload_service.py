@@ -14,6 +14,12 @@ class ReceiptUploadService:
     def process_upload(self, file: UploadFile, user_id: int) -> dict:
         filename = os.path.basename(file.filename) if file.filename else "unknown"
         ext = os.path.splitext(filename)[1].lower()
+        
+        ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.pdf'}
+        if ext not in ALLOWED_EXTENSIONS:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Invalid file type. Allowed: jpg, jpeg, png, pdf")
+            
         fd, temp_path = tempfile.mkstemp(suffix=ext)
         
         try:
