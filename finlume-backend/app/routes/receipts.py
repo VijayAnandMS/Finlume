@@ -17,6 +17,8 @@ from app.services.receipts.upload_service import ReceiptUploadService
 from app.services.receipts.providers.azure_provider import AzureOCRProvider
 from app.services.receipts.parser.parser import ReceiptParser
 from app.services.receipts.intelligence.intelligence_service import ReceiptIntelligenceService
+from app.core.logging_config import log_audit_action
+import time
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/receipts", tags=["receipts"])
@@ -182,6 +184,13 @@ def process_receipt_ocr(
     rs.status = "OCR_PROCESSING"
     db.commit()
     
+    start_time = time.time()
+    log_audit_action(
+        user_id=str(current_user.id),
+        action=f"OCR_START - Session {receipt_session_id}",
+        status="Started"
+    )
+    
     try:
         # Abstracted Execution Call
         ocr_provider = AzureOCRProvider()
@@ -209,10 +218,24 @@ def process_receipt_ocr(
         db.commit()
         db.refresh(ocr)
         
+        duration = (time.time() - start_time) * 1000
+        log_audit_action(
+            user_id=str(current_user.id),
+            action=f"OCR_FINISH - Session {receipt_session_id}",
+            status="Completed",
+            exec_time_ms=duration
+        )
         return ocr
 
     except Exception as e:
+        duration = (time.time() - start_time) * 1000
         logger.error(f"Internal OCR Parsing Error: {e}")
+        log_audit_action(
+            user_id=str(current_user.id),
+            action=f"OCR_FAILED - Session {receipt_session_id}",
+            status=f"Failed: {type(e).__name__}",
+            exec_time_ms=duration
+        )
         rs.status = "FAILED"
         db.commit()
         # Sanitized error avoiding explicit stack traces globally
@@ -315,6 +338,13 @@ def execute_receipt_intelligence(
     ocr = db.query(OCRResult).filter(OCRResult.receipt_session_id == rs.id).order_by(OCRResult.id.desc()).first()
     if not ocr: raise HTTPException(status_code=400, detail="Cannot apply Intelligence without OCR Confidence Data")
     
+    start_time = time.time()
+    log_audit_action(
+        user_id=str(current_user.id),
+        action=f"AI_START - Session {receipt_session_id}",
+        status="Started"
+    )
+    
     try:
         parsed_dict = {
             "merchant_name": pr.merchant_name,
@@ -338,9 +368,24 @@ def execute_receipt_intelligence(
         db.add(ri)
         db.commit()
         db.refresh(ri)
+        
+        duration = (time.time() - start_time) * 1000
+        log_audit_action(
+            user_id=str(current_user.id),
+            action=f"AI_FINISH - Session {receipt_session_id}",
+            status="Completed",
+            exec_time_ms=duration
+        )
         return ri
     except Exception as e:
+        duration = (time.time() - start_time) * 1000
         logger.error(f"AI Failure securely mapped cleanly: {e}")
+        log_audit_action(
+            user_id=str(current_user.id),
+            action=f"AI_FAILED - Session {receipt_session_id}",
+            status=f"Failed: {type(e).__name__}",
+            exec_time_ms=duration
+        )
         raise HTTPException(status_code=500, detail="Internal Intelligence execution safely suppressed")
 
 @router.get("/{receipt_session_id}/intelligence", response_model=ReceiptIntelligenceOut)

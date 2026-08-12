@@ -13,6 +13,12 @@ from app.routes import (
 )
 
 from contextlib import asynccontextmanager
+import uuid
+import logging
+from app.core.logging_config import request_id_ctx_var
+from fastapi.responses import JSONResponse
+
+main_logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,21 +32,45 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    req_id = request_id_ctx_var.get()
+    main_logger.error(f"Unhandled Server Error: {exc}", extra={"request_id": req_id})
+    # Safe tracing returning sanitized output statically securely organically cleanly
+    return JSONResponse(
+        status_code=500,
+        content={"message": "Internal Server Error", "error_reference": req_id}
+    )
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
+    req_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
+    request_id_ctx_var.set(req_id)
     
-    # Simple Audit Log mapping for analytics requests
-    if "/api/agents" in request.url.path:
-        log_audit_action("system", f"Called endpoint: {request.url.path}", "Success", process_time * 1000)
+    start_time = time.time()
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        # Re-raise to let exception handler catch it
+        raise e
+    finally:
+        process_time = time.time() - start_time
         
-    return response
+        # Log purely analytics dynamically 
+        log_audit_action(
+            "system", 
+            f"API {request.method} {request.url.path}", 
+            "Success" if 'response' in locals() and response.status_code < 400 else "Error", 
+            process_time * 1000
+        )
+        
+    if 'response' in locals():
+        response.headers["X-Process-Time"] = str(process_time)
+        response.headers["X-Correlation-ID"] = req_id
+        return response
 
 # Security headers middleware
 @app.middleware("http")

@@ -2,6 +2,16 @@ import logging
 from pythonjsonlogger import jsonlogger
 import sys
 import time
+import contextvars
+import uuid
+
+# Define global context var for correlation tracing
+request_id_ctx_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
+
+class CorrelationIdFilter(logging.Filter):
+    def filter(self, record):
+        record.request_id = request_id_ctx_var.get()
+        return True
 
 def setup_audit_logging():
     import os
@@ -20,9 +30,13 @@ def setup_audit_logging():
         # Dual handler pushing to file and stdout sequentially
         logHandler = logging.StreamHandler(sys.stdout)
         
-        formatter = jsonlogger.JsonFormatter('%(timestamp)s %(level)s %(name)s %(user_id)s %(action)s %(status)s %(execution_time_ms)s')
+        formatter = jsonlogger.JsonFormatter('%(timestamp)s %(level)s %(name)s %(request_id)s %(user_id)s %(action)s %(status)s %(execution_time_ms)s')
         fileHandler.setFormatter(formatter)
         logHandler.setFormatter(formatter)
+        
+        # Add correlation ID filter
+        fileHandler.addFilter(CorrelationIdFilter())
+        logHandler.addFilter(CorrelationIdFilter())
         
         logger.addHandler(fileHandler)
         logger.addHandler(logHandler)
