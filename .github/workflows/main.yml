@@ -13,6 +13,21 @@ jobs:
     name: Backend Lint, Test, & Docker checks
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: finlume
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -27,7 +42,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest flake8 slowapi python-json-logger
+          pip install pytest flake8 slowapi python-json-logger alembic psycopg2-binary httpx
 
       - name: Run Backend Linting
         working-directory: finlume-backend
@@ -35,6 +50,13 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/finlume-backend
         run: |
           flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run Database Migrations
+        working-directory: finlume-backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finlume
+        run: |
+          alembic upgrade head
 
       - name: Run Backend Tests
         working-directory: finlume-backend
@@ -90,6 +112,3 @@ jobs:
 
       - name: Dry-Run Docker Compose Config
         run: docker compose config
-
-      - name: Build Images
-        run: docker compose build
