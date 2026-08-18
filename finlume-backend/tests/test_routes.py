@@ -139,6 +139,21 @@ def test_ai_chat_coach(client):
     )
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
+    
+    from unittest.mock import patch
+    from app.ai.llm_client import MockMessageResponse, MockTextBlock
+    
+    def my_mock_llm(*args, **kwargs):
+        msg = kwargs.get("messages", [{}])[-1].get("content", "").lower()
+        if "save" in msg:
+            return MockMessageResponse([MockTextBlock("You can save a surplus.")])
+        elif "expense" in msg:
+            return MockMessageResponse([MockTextBlock("Your highest expense is rent.")])
+        else:
+            return MockMessageResponse([MockTextBlock("Your income is high.")])
+            
+    patcher = patch("app.ai.orchestrator.call_llm_with_tools", side_effect=my_mock_llm)
+    mock_llm_override = patcher.start()
 
     # 1. Ask about overview/summary
     res_overview = client.post(

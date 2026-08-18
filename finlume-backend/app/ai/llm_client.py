@@ -2,6 +2,7 @@ import os
 from typing import List, Dict, Any
 from app.core.config import settings
 import json
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 class MockTextBlock:
     def __init__(self, text: str):
@@ -19,6 +20,11 @@ class MockMessageResponse:
     def __init__(self, content: list):
         self.content = content
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    reraise=True
+)
 def call_llm_with_tools(
     system_prompt: str,
     messages: List[Dict[str, Any]],
@@ -38,7 +44,7 @@ def _call_anthropic(system_prompt: str, messages: List[Dict[str, Any]], tools: L
         raise ValueError("Anthropic API Key is missing.")
 
     from anthropic import Anthropic
-    client = Anthropic(api_key=api_key)
+    client = Anthropic(api_key=api_key, timeout=15.0)
     
     # Clean up any custom keys we added for Gemini before sending to Anthropic
     clean_messages = []
@@ -150,7 +156,8 @@ def _call_gemini(system_prompt: str, messages: List[Dict[str, Any]], tools: List
     
     response = model.generate_content(
         gemini_contents,
-        generation_config=genai.types.GenerationConfig(max_output_tokens=max_tokens)
+        generation_config=genai.types.GenerationConfig(max_output_tokens=max_tokens),
+        request_options={"timeout": 15.0}
     )
     
     # 4. Convert response back to Anthropic format

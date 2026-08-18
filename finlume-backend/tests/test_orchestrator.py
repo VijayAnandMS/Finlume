@@ -89,8 +89,8 @@ def test_orchestrator_fallback_on_exception():
     
     mock_anthropic.Anthropic.side_effect = Exception("Network Error")
     
-    with pytest.raises(Exception, match="Network Error"):
-        call_orchestrator(1, "Test", {}, [])
+    result = call_orchestrator(1, "Test", {}, [])
+    assert "fallback_system" in result["agents_used"]
         
     mock_anthropic.Anthropic.side_effect = None
 

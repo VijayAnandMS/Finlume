@@ -170,12 +170,28 @@ If multiple tools are needed, you can call them. But you must answer the user's 
     
     max_iterations = 5
     for _ in range(max_iterations):
-        response = call_llm_with_tools(
-            system_prompt=SYSTEM_PROMPT,
-            messages=messages,
-            tools=TOOLS,
-            max_tokens=1024
-        )
+        try:
+            response = call_llm_with_tools(
+                system_prompt=SYSTEM_PROMPT,
+                messages=messages,
+                tools=TOOLS,
+                max_tokens=1024
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"External AI Call Failed: {e}")
+            fallback_explain = {
+                "agents_used": ["fallback_system"],
+                "confidence_score": 50,
+                "reasoning_summary": "System degraded, AI provider unavailable.",
+                "key_financial_factors": "Deterministic fallback applied gracefully.",
+                "assumptions": "Network or Rate limit exception.",
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+            fallback_reply = f"My AI analysis capabilities are currently delayed. Your deterministic data (income and expenses) remains available on the dashboard. For reference, income is ₹{summary_data.get('total_income', 0.0):.2f}."
+            ret = {"reply": fallback_reply, "agents_used": ["fallback_system"], "explainability": fallback_explain}
+            _RESPONSE_CACHE[cache_key] = ret
+            return ret
         
         # Append LLM's response to the conversation
         messages.append({"role": "assistant", "content": response.content})
