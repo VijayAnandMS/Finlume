@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     FRONTEND_ORIGIN: str = "http://localhost:5173"
     RATE_LIMIT_AI: str = "10/minute"
     RATE_LIMIT_DEFAULT: str = "60/minute"
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
+    SUPABASE_RECEIPTS_BUCKET: str = "finlume-receipts"
 
     model_config = SettingsConfigDict(
         env_file=".env",

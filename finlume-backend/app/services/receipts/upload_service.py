@@ -5,11 +5,11 @@ import shutil
 from fastapi import UploadFile
 from .validator import ReceiptValidator
 from .image_processor import ImageProcessor
-from .storage import LocalStorageProvider
+from .storage import get_storage_provider
 
 class ReceiptUploadService:
     def __init__(self):
-        self.storage = LocalStorageProvider()
+        self.storage = get_storage_provider()
 
     def process_upload(self, file: UploadFile, user_id: int) -> dict:
         filename = os.path.basename(file.filename) if file.filename else "unknown"

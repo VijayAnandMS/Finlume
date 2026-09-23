@@ -141,7 +141,18 @@ def get_receipt(
     ).first()
     
     if not rs: raise HTTPException(status_code=404, detail="Receipt Session not found")
-    return rs
+    
+    from app.services.receipts.storage import get_storage_provider
+    import os
+    provider = get_storage_provider()
+    signed_url = provider.get_signed_url(os.path.basename(rs.storage_url))
+    
+    return {
+        "id": rs.id,
+        "filename": rs.filename,
+        "storage_url": signed_url,
+        "status": rs.status
+    }
 
 @router.delete("/{receipt_session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_receipt(
@@ -192,11 +203,22 @@ def process_receipt_ocr(
     )
     
     try:
-        # Abstracted Execution Call
-        ocr_provider = AzureOCRProvider()
-        final_path = rs.storage_url 
+        from app.services.receipts.storage import get_storage_provider
+        import tempfile
+        import os
         
-        provider_result = ocr_provider.extract_receipt(final_path)
+        provider = get_storage_provider()
+        filename = os.path.basename(rs.storage_url)
+        
+        fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        try:
+            provider.download(filename, tmp_path)
+            ocr_provider = AzureOCRProvider()
+            provider_result = ocr_provider.extract_receipt(tmp_path)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
         
         errors = provider_result.get("errors", [])
         if errors:
@@ -428,7 +450,21 @@ def end_to_end_receipt_process(
     ocr = db.query(OCRResult).filter(OCRResult.receipt_session_id == rs.id).order_by(OCRResult.id.desc()).first()
     if not ocr:
         # Implicitly fire OCR sequentially if tracking natively missing bounding limits
-        impl_ocr = AzureOCRProvider().extract_receipt(rs.storage_url)
+        from app.services.receipts.storage import get_storage_provider
+        import tempfile
+        import os
+        
+        provider = get_storage_provider()
+        filename = os.path.basename(rs.storage_url)
+        
+        fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        try:
+            provider.download(filename, tmp_path)
+            impl_ocr = AzureOCRProvider().extract_receipt(tmp_path)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
         ocr = OCRResult(
             receipt_session_id=rs.id,
             raw_response=json.dumps(impl_ocr),
