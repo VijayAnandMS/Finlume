@@ -1,3 +1,8 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+
 # Temporary Runtime Artifacts
 *.tmp
 *_out.txt
@@ -10,10 +15,12 @@ err*.txt
 
 # Pytest & Cache
 __pycache__/
+*.pyc
 .pytest_cache/
 
 # Databases
 *.db
+*.sqlite
 *.sqlite3
 *.db-journal
 
@@ -23,14 +30,14 @@ receipts_storage/
 chroma_db/
 trace.json
 
+# Frontend
+node_modules/
+dist/
+coverage/
+.vite/
+
 # Temporary reports
 *_utf8.txt
 *_output.txt
 *_status.txt
 *_run.txt
-
-finlume.db
-finlume_test.db
-chroma_db/
-logs/
-receipts_storage/
