@@ -34,7 +34,7 @@ export const RegisterPage = () => {
         setIsLoading(true);
         try {
             await api.register(formData.full_name, formData.username, formData.email, formData.password, formData.phone_number);
-            navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+            navigate(`/login`);
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Registration failed');
             setIsLoading(false);

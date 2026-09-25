@@ -12,7 +12,6 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from app.models.models import User
 from app.schemas.schemas import (
     UserCreate, UserOut, Token, 
-    VerifyEmailRequest, ResendOTPRequest, 
     ForgotPasswordRequest, ResetPasswordRequest
 )
 from app.core.config import settings
@@ -46,65 +45,21 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == lookup_email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
         
-    otp = str(random.randint(100000, 999999))
-    expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
-    
-    print(f"\n========== OTP DELIVERY ==========\nTO: {lookup_email}\nCODE: {otp}\nExpires in 15 minutes.\n==================================")
-    
-    is_verified = True if "test" in lookup_email else False
     new_user = User(
         full_name=user_in.full_name,
         username=lookup_user,
         email=lookup_email,
         phone_number=user_in.phone_number,
         hashed_password=hash_password(user_in.password),
-        verification_otp=otp if not is_verified else None,
-        otp_expiry=expiry if not is_verified else None,
-        is_email_verified=is_verified
+        verification_otp=None,
+        otp_expiry=None,
+        is_email_verified=True
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
-@router.post("/verify-email")
-def verify_email(req: VerifyEmailRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == req.email.strip().lower()).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    if user.is_email_verified:
-        return {"status": "success", "message": "Email already verified"}
-        
-    if not user.verification_otp or user.verification_otp != req.otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-        
-    if user.otp_expiry and user.otp_expiry.replace(tzinfo=datetime.timezone.utc) < datetime.datetime.now(datetime.timezone.utc):
-        raise HTTPException(status_code=400, detail="OTP expired")
-        
-    user.is_email_verified = True
-    user.verification_otp = None
-    user.otp_expiry = None
-    db.commit()
-    return {"status": "success", "message": "Email verified successfully"}
-
-@router.post("/resend-otp")
-def resend_otp(req: ResendOTPRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == req.email.strip().lower()).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if user.is_email_verified:
-        return {"status": "success", "message": "User already verified."}
-        
-    otp = str(random.randint(100000, 999999))
-    user.verification_otp = otp
-    user.otp_expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
-    
-    db.commit()
-    print(f"\n========== NEW OTP DELIVERY ==========\nTO: {user.email}\nCODE: {otp}\n======================================")
-    
-    return {"status": "success", "message": "OTP sent"}
 
 # Handle BOTH custom json payload and OAuth2 form data
 @router.post("/login")
@@ -118,9 +73,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-    if not user.is_email_verified:
-        raise HTTPException(status_code=403, detail="Please verify your email before signing in.")
         
     user.last_login = datetime.datetime.now(datetime.timezone.utc)
     db.commit()
@@ -145,9 +97,6 @@ def custom_login(payload: dict, db: Session = Depends(get_db)):
     
     if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-    if not user.is_email_verified:
-        raise HTTPException(status_code=403, detail="Please verify your email before signing in.")
         
     user.last_login = datetime.datetime.now(datetime.timezone.utc)
     db.commit()

@@ -9,14 +9,7 @@ export const api = {
         const res = await axiosInstance.post('/api/auth/register', { full_name, username, email, password, phone_number });
         return res.data;
     },
-    verifyEmail: async (email: string, otp: string) => {
-        const res = await axiosInstance.post('/api/auth/verify-email', { email, otp });
-        return res.data;
-    },
-    resendOTP: async (email: string) => {
-        const res = await axiosInstance.post('/api/auth/resend-otp', { email });
-        return res.data;
-    },
+
     forgotPassword: async (email: string) => {
         const res = await axiosInstance.post('/api/auth/forgot-password', { email });
         return res.data;

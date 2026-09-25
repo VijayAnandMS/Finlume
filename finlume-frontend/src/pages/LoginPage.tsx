@@ -66,9 +66,9 @@ export const LoginPage = () => {
               <span>{error}</span>
             </div>
             {error.toLowerCase().includes('verify') && (
-              <Link to={`/verify-email?email=${encodeURIComponent(identity)}`} className="text-indigo-400 font-bold hover:text-indigo-300 mt-1">
-                Check verification status
-              </Link>
+              <div className="text-indigo-400 font-bold mt-1">
+                Account locked. Contact support.
+              </div>
             )}
           </div>
         )}
