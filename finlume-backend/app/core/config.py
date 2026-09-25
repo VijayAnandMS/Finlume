@@ -2,7 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://finlume:finlume@localhost:5432/finlume"
+    DATABASE_URL: Optional[str] = None
+    ENVIRONMENT: str = "development"
     JWT_SECRET: str = "changeme"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
