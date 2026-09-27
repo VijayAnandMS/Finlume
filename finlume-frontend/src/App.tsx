@@ -1,6 +1,9 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+import { ProtectedRoute } from './components/ProtectedRoute';
+
+const LandingPage = React.lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const LoginPage = React.lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = React.lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
@@ -21,20 +24,21 @@ function App() {
     <BrowserRouter>
       <Suspense fallback={<div className="flex h-screen items-center justify-center bg-slate-950 text-slate-400">Loading App Core...</div>}>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/transactions" element={<TransactionsPage />} />
-          <Route path="/intelligence" element={<IntelligenceDashboard />} />
-          <Route path="/imports/:session_id/workflow" element={<ImportWorkflowPage />} />
-          <Route path="/receipts/:receipt_session_id/preview" element={<ReceiptPreviewPage />} />
-          <Route path="/receipts/history" element={<ReceiptHistoryPage />} />
-          <Route path="/import/history" element={<ImportHistoryPage />} />
-          <Route path="/import/history/:sessionId" element={<ImportDetailsPage />} />
-          <Route path="/insights" element={<InsightsDashboard />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/transactions" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
+          <Route path="/intelligence" element={<ProtectedRoute><IntelligenceDashboard /></ProtectedRoute>} />
+          <Route path="/imports/:session_id/workflow" element={<ProtectedRoute><ImportWorkflowPage /></ProtectedRoute>} />
+          <Route path="/receipts/:receipt_session_id/preview" element={<ProtectedRoute><ReceiptPreviewPage /></ProtectedRoute>} />
+          <Route path="/receipts/history" element={<ProtectedRoute><ReceiptHistoryPage /></ProtectedRoute>} />
+          <Route path="/import/history" element={<ProtectedRoute><ImportHistoryPage /></ProtectedRoute>} />
+          <Route path="/import/history/:sessionId" element={<ProtectedRoute><ImportDetailsPage /></ProtectedRoute>} />
+          <Route path="/insights" element={<ProtectedRoute><InsightsDashboard /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
 
         </Routes>
       </Suspense>
