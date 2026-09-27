@@ -32,6 +32,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+@app.get("/healthz")
+def health_check():
+    return {"status": "ok"}
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     req_id = request_id_ctx_var.get()
